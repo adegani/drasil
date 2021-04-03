@@ -1,3 +1,4 @@
 from src import drasil
+import sys
 
-drasil.main()
+drasil.main(sys.argv)
