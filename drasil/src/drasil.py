@@ -30,7 +30,7 @@ def main(argv):
     # The list is automatically populated with all the modules in PLUGIN_DIR folder
     # Each entry of the list is a dict with two fields:
     #   - 'class' that is the pointer to the DrasilPlug() class
-    #   - 'triggers' that are the keywords used for triggering the plugin 
+    #   - 'hooks' that are the keywords used for triggering the plugin 
     plugins = parse_plugins(PLUGIN_DIR)
 
     if args.plugin_list:
@@ -42,11 +42,12 @@ def main(argv):
     if args.plugin_help is not None:
         for p in plugins:
             if args.plugin_help.lower() == p['class'].name.lower():
-                print(' %s - %s' % (p['class'].name, p['class'].description))
-                print('-------------------')
+                print()
+                print('%s - %s' % (p['class'].name, p['class'].description))
+                print('-')
                 print(p['class'].help_str)
-                print('-------------------')
-                print('Triggers: %s' % ', '.join(p['class'].triggers))
+                print('-')
+                print('hooks: %s' % ', '.join(p['class'].hooks))
         exit(0)
 
     src_root = args.src
@@ -63,8 +64,8 @@ def parse_plugins(plugin_dir):
         logging.debug('Plugin found: %s' % name)
         pluggo = importlib.import_module(name)
         Plug = pluggo.DrasilPlug()
-        triggers = Plug.triggers
-        my_plug = {'class': Plug, 'triggers': triggers}
+        hooks = Plug.hooks
+        my_plug = {'class': Plug, 'hooks': hooks}
         plugin_list.append(my_plug)
     
     return plugin_list

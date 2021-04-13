@@ -1,9 +1,9 @@
 from ddate.base import DDate
 
 class DrasilPlug():
-    triggers = ['DDATE'ß]
+    hooks = ['DDATE']
     name = 'DDate' 
-    description = 'Print the current date in discrodian format'
+    description = 'Print the current date in discordian format'
     help_str = 'The plugin has no args. When the trigger is found, prints the discordian date' 
     
     def pre(self, *argv):
