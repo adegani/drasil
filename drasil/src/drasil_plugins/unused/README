@@ -1,0 +1,2 @@
+This folder contains the Drasil plugins
+Each file is a plugin and must contain th DrasilPlug class
