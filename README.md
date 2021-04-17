@@ -3,6 +3,8 @@ Static HTML website generator based on directory tree
 
 This is a personal experiment, use it at your own risk :)
 
+Use Python >= 3.6
+
 # Install
 
 ## Install from source
