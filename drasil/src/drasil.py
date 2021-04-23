@@ -19,7 +19,6 @@ logging.basicConfig(level=logging.CRITICAL,
 def main(argv):
     start_time = time.time()
 
-    bifrost = DrasilContext()
     args = parse_args(argv)
 
     if args.v:
@@ -36,6 +35,7 @@ def main(argv):
         exit(0)
 
     plugins = DrasilPlugin()
+    bifrost = DrasilContext(plugins)
 
     if args.plugin_list:
         plugins.print_list()

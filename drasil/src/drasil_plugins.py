@@ -23,7 +23,7 @@ class DrasilPlugin(object):
             pluggo = importlib.import_module(name)
             Plug = pluggo.DrasilPlug()
             hooks = Plug.hooks
-            my_plug = {'class': Plug, 'hooks': hooks}
+            my_plug = {'class': Plug, 'hooks': [h.lower() for h in hooks]}
             plugin_list.append(my_plug)
         
         return plugin_list
@@ -42,3 +42,9 @@ class DrasilPlugin(object):
                 print(p['class'].help_str)
                 print('-')
                 print('hooks: %s' % ', '.join(p['class'].hooks))
+    
+    def run_hooks(self, hook):
+        logging.debug('Running hook \"%s\"' % hook)
+        for p in self.plugin_list:
+            if hook in p['hooks']:
+                return p['class'].run()
