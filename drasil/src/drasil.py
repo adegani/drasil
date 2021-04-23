@@ -17,7 +17,6 @@ logging.basicConfig(level=logging.CRITICAL,
                     format='%(asctime)s:DRASIL:%(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 def main(argv):
-    start_time = time.time()
 
     args = parse_args(argv)
 
@@ -53,7 +52,7 @@ def main(argv):
         logging.error(err_str)
         exit(1)
 
-    output_dir = args.out
+    output_dir = args.OUTPUT_FOLDER
     if not args.y:
         if os.path.exists(output_dir):
             resp = input('The path %s already exists. Overwrite? [Y/n] ' % output_dir)
@@ -72,6 +71,7 @@ def main(argv):
     bifrost.src_root = src_root
     bifrost.current_node = src_root
 
+    start_time = time.time()
     logging.info('Building website "%s" into folder "%s"' % (src_root, output_dir))
 
     print('YGGDRASIL roots are in %s' % src_root)
@@ -99,13 +99,12 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(
         description='Drasil, static HTML website generator V.' + VERSION,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('OUTPUT_FOLDER', help='Compiled website output dir')
     parser.add_argument('-l', '--plugin-list', action='store_true',
                         help='Print the list of the installed plugins')
     parser.add_argument('--plugin-help', help='print the help of a given plugin')
     parser.add_argument('--src', help='Website root path to be compiled',
                         default='.')
-    parser.add_argument('--out', help='Compiled website output dir',
-                        default='../build')
     parser.add_argument('-y', action='store_true',
                         help='Forces YES [Y] to all questions')
     parser.add_argument('-v', action='store_true',
