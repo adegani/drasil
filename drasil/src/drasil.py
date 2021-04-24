@@ -7,7 +7,7 @@ import logging
 from .drasil_bifrost import DrasilBifrost
 from .drasil_plugins import DrasilPlugin
 
-VERSION = '0.1'
+VERSION = '0.2'
 SCRIPT_FILE = os.path.realpath(__file__)
 
 TEMPLATE_FILE = '_template.html'
