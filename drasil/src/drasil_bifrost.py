@@ -83,6 +83,7 @@ class DrasilBifrost(object):
                 return
 
         file_path = os.path.join(leaf.output_dir, file_name).replace(' ', '_')
+        file_path = file_path.replace('+', '')
         file_dir = os.path.dirname(file_path)
 
         logging.info('Rendering [level %d page] %s' % (level, file_path))
@@ -96,7 +97,7 @@ class DrasilBifrost(object):
         f.close()
 
     def _generate(self):
-        out = ''
+        out = []
         level = self.current_level
         node = self.current_node
 
@@ -106,6 +107,9 @@ class DrasilBifrost(object):
             out = self._render_indexer_page()
             render_as_html = True
         else:
+            # Only a file with an extension listed here is created in the static folder
+            # If you want to include a certain type of file you must add to this
+            # ELIF list. The renering switch is optional.
             if node[-4:].lower() == 'html' or node[-3:].lower() == 'htm':
                 render_as_html = True
             elif node[-3:].lower() == 'txt':
@@ -116,7 +120,7 @@ class DrasilBifrost(object):
                 pass    
             else:
                 logging.warning('Node exestion not recognized, not parsing (%s)' % node)
-                return
+                return out
             out = self._load_content()
         
         if render_as_html:
@@ -146,24 +150,14 @@ class DrasilBifrost(object):
             if u is not None:
                 menu.append('<div class="deep_menu">\n')
                 menu.append('<ul>\n')
-                for b in u:
-                    mnu_str = b.split('.')[0]
-                    mnu_link = mnu_str + '.html'
-                    if len(b.split('.')) == 1:
-                        mnu_str += '/'
-                    menu.append(item_str.format(mnu_link, mnu_str))
+                menu.append(self._list_item_from_list(u))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
         
         if self.brothers is not None:
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            for b in self.brothers:
-                mnu_str = b.split('.')[0]
-                mnu_link = mnu_str + '.html'
-                if len(b.split('.')) == 1:
-                    mnu_str += '/'
-                menu.append(item_str.format(mnu_link, mnu_str))
+            menu.append(self._list_item_from_list(self.brothers))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -174,14 +168,35 @@ class DrasilBifrost(object):
         dir_list = os.listdir(self.current_node)
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         if len(dir_list) > 0:
-            out.append(['<ul class="indexer_top_level">'])
-            for dirs in dir_list:
-                mnu_str = dirs.split('.')[0]
-                mnu_link = mnu_str + '.html'
-                if len(dirs.split('.')) == 1:
-                    mnu_str += '/'
-                out.append(item_str.format(mnu_link, mnu_str))
+            out.append(['<ul class="indexer_node">'])
+            for element in dir_list:
+                out.append(self._list_item_from_list([element]))
+                element_path = os.path.join(self.current_node, element)
+                if os.path.isdir(element_path):
+                    sub_dir_list = os.listdir(element_path)
+                    if len(sub_dir_list) > 0:
+                        out.append(['<ul class="indexer_leaf">'])
+                        out.append(self._list_item_from_list(sub_dir_list))
+                        out.append(['</ul>'])
             out.append(['</ul>'])
+        return out
+
+    def _list_item_from_list(self, li_list, li_class=None):
+        out = []
+        item_str = '<li><a href=\"{}\">{}</a></li>\n'
+        if li_class is not None:
+            item_str = '<li class=\"%s\"><a href=\"{}\">{}</a></li>\n' % li_class
+        for li in li_list:
+            if li[0] == '+':
+                # do not link files that starts with "+" marker
+                continue
+            li_str = li.split('.')[0]
+            li_link = li.replace(' ', '_')
+            if len(li_link.split('.')) == 1:
+                li_link += '.html'
+            if len(li.split('.')) == 1:
+                li_str += '/'
+            out.append(item_str.format(li_link, li_str))
         return out
 
     def _parse_hooks(self, lines):
