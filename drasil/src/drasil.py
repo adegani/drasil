@@ -4,7 +4,7 @@ import sys
 import argparse
 import logging
 
-from .drasil_context import DrasilContext
+from .drasil_bifrost import DrasilBifrost
 from .drasil_plugins import DrasilPlugin
 
 VERSION = '0.1'
@@ -34,7 +34,7 @@ def main(argv):
         exit(0)
 
     plugins = DrasilPlugin()
-    bifrost = DrasilContext(plugins)
+    bifrost = DrasilBifrost(plugins)
 
     if args.plugin_list:
         plugins.print_list()
@@ -82,7 +82,7 @@ def main(argv):
     bifrost.walk()
 
     exec_time = time.time() - start_time
-    print('\n%d steps walked on the Bifrost in %.2f seconds' % (DrasilContext.tot_steps, exec_time))
+    print('\n%d steps walked on the Bifrost in %.2f seconds' % (DrasilBifrost.tot_steps, exec_time))
     logging.info('Drasil job completed in %f seconds' % exec_time)
 
     exit(0)

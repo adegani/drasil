@@ -1,6 +1,8 @@
 import importlib
 import pkgutil
 import logging
+
+from .drasil_context import DrasilContext
 from . import plugins as pns
 
 class DrasilPlugin(object):
@@ -43,7 +45,7 @@ class DrasilPlugin(object):
                 print('-')
                 print('hooks: %s' % ', '.join(p['class'].hooks))
     
-    def run_hooks(self, hook):
+    def run_hooks(self, hook, context):
         logging.debug('Running hook \"%s\"' % hook)
         for p in self.plugin_list:
             if hook in p['hooks']:
