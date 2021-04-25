@@ -11,7 +11,7 @@ class DrasilPlug():
         pass
 
     def run(self, *argv):
-        return DDate()
+        return str(DDate()).replace('Today is', '')
 
     def post(self, *argv):
         print('Nothing to post')
