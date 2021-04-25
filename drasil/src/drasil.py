@@ -3,6 +3,7 @@ import time
 import sys
 import argparse
 import logging
+from distutils.dir_util import copy_tree
 
 from .drasil_bifrost import DrasilBifrost
 from .drasil_plugins import DrasilPlugin
@@ -84,6 +85,14 @@ def main(argv):
     exec_time = time.time() - start_time
     print('\n%d steps walked on the Bifrost in %.2f seconds' % (DrasilBifrost.tot_steps, exec_time))
     logging.info('Drasil job completed in %f seconds' % exec_time)
+
+    src_assets = os.path.join(bifrost.src_root, 'assets')
+    dest_assets = os.path.join(bifrost.output_dir, 'assets')
+    if os.path.exists(src_assets):
+        logging.info('Copying assets %s -> %s' % (src_assets, dest_assets))
+        copy_tree(src_assets, dest_assets)
+    else:
+        logging.warning('No assets folder found: %s' % src_assets)
 
     exit(0)
 
