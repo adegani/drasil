@@ -4,6 +4,8 @@ import os.path
 from .drasil_plugins import DrasilPlugin
 from .drasil_context import DrasilContext
 
+ASSETS_FOLDER = 'assets'
+
 class DrasilBifrost(object):
     def __init__(self, plugins=None):
         super(DrasilBifrost, self).__init__()
@@ -27,7 +29,13 @@ class DrasilBifrost(object):
         level = bifrost.current_level
 
         bifrost.current_level += 1
-        bifrost.brothers = [n for n in os.listdir(root) if n[0] is not '_']
+        bifrost.brothers = [n for n in os.listdir(root)
+                            if n[0] is not '_' if n[0] is not '.'
+                            if os.path.split(n)[-1] != ASSETS_FOLDER
+                            if os.path.split(n)[-1] != 'index.html'
+                            if os.path.split(n)[-1] != 'index.htm']
+
+        print(bifrost.brothers)
 
         if level == 0:
             print('+')
@@ -35,7 +43,7 @@ class DrasilBifrost(object):
 
         for node in os.listdir(root):
             # print('NODE: %s' % node)
-            if node[0] == '_':
+            if node[0] == '_' or node[0] == '.' or node == ASSETS_FOLDER:
                 continue
 
             new_path = os.path.join(root, node)
@@ -146,18 +154,20 @@ class DrasilBifrost(object):
         menu = []
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         
+        menu_three = self._rel_path().split(os.path.sep)
+        print(menu_three)
         for u in self.uncles:
             if u is not None:
                 menu.append('<div class="deep_menu">\n')
                 menu.append('<ul>\n')
-                menu.append(self._list_item_from_list(u))
+                menu.append(self._list_item_from_list(u, menu_tree=menu_three))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
         
         if self.brothers is not None:
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            menu.append(self._list_item_from_list(self.brothers))
+            menu.append(self._list_item_from_list(self.brothers, menu_tree=menu_three))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -181,11 +191,10 @@ class DrasilBifrost(object):
             out.append(['</ul>'])
         return out
 
-    def _list_item_from_list(self, li_list, li_class=None):
+    def _list_item_from_list(self, li_list, menu_tree=None):
         out = []
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
-        if li_class is not None:
-            item_str = '<li class=\"%s\"><a href=\"{}\">{}</a></li>\n' % li_class
+        item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
         for li in li_list:
             if li[0] == '+':
                 # do not link files that starts with "+" marker
@@ -196,7 +205,10 @@ class DrasilBifrost(object):
                 li_link += '.html'
             if len(li.split('.')) == 1:
                 li_str += '/'
-            out.append(item_str.format(li_link, li_str))
+            if menu_tree is not None and li in menu_tree:                
+                out.append(item_str_selected.format(li_link, li_str))
+            else:
+                out.append(item_str.format(li_link, li_str))
         return out
 
     def _parse_hooks(self, lines):
