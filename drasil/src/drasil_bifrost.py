@@ -1,6 +1,7 @@
 import copy
 import logging
 import os.path
+from datetime import datetime
 from .drasil_plugins import DrasilPlugin
 from .drasil_context import DrasilContext
 
@@ -33,9 +34,8 @@ class DrasilBifrost(object):
                             if n[0] is not '_' if n[0] is not '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
                             if os.path.split(n)[-1] != 'index.html'
-                            if os.path.split(n)[-1] != 'index.htm']
-
-        print(bifrost.brothers)
+                            if os.path.split(n)[-1] != 'index.htm'
+                            if os.path.split(n)[-1] != self._short_name() + '.html']
 
         if level == 0:
             print('+')
@@ -111,6 +111,8 @@ class DrasilBifrost(object):
 
         render_as_html = False
 
+        last_update = os.path.getmtime(node)
+
         if not self.is_leaf():
             out = self._render_indexer_page()
             render_as_html = True
@@ -131,11 +133,14 @@ class DrasilBifrost(object):
                 return out
             out = self._load_content()
         
+        last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
+
         if render_as_html:
             template = self._load_template()
             for n, line in enumerate(template):
                 # parsing built-in hooks
                 template[n] = str(template[n]).replace('[$PAGE_TITLE$]', self._short_name())
+                template[n] = str(template[n]).replace('[$lastupdate$]', last_update_str)
                 # template[n] = str(template[n]).replace('[$NAV_MENU$]', self._gen_menu())
                 if line.strip() == '[$NAV_MENU$]':
                     template[n] = self._gen_menu()
@@ -155,7 +160,7 @@ class DrasilBifrost(object):
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         
         menu_three = self._rel_path().split(os.path.sep)
-        print(menu_three)
+
         for u in self.uncles:
             if u is not None:
                 menu.append('<div class="deep_menu">\n')
@@ -180,22 +185,25 @@ class DrasilBifrost(object):
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
             for element in dir_list:
-                out.append(self._list_item_from_list([element]))
                 element_path = os.path.join(self.current_node, element)
+                out.append(self._list_item_from_list([element], paths=[element_path]))
                 if os.path.isdir(element_path):
                     sub_dir_list = os.listdir(element_path)
+                    if element + '.html' in sub_dir_list:
+                        sub_dir_list.remove(element + '.html')
                     if len(sub_dir_list) > 0:
+                        paths = [os.path.join(element_path,f) for f in sub_dir_list]
                         out.append(['<ul class="indexer_leaf">'])
-                        out.append(self._list_item_from_list(sub_dir_list))
+                        out.append(self._list_item_from_list(sub_dir_list, paths=paths))
                         out.append(['</ul>'])
             out.append(['</ul>'])
         return out
 
-    def _list_item_from_list(self, li_list, menu_tree=None):
+    def _list_item_from_list(self, li_list, menu_tree=None, paths=None):
         out = []
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
-        for li in li_list:
+        for n, li in enumerate(li_list):
             if li[0] == '+':
                 # do not link files that starts with "+" marker
                 continue
@@ -205,6 +213,12 @@ class DrasilBifrost(object):
                 li_link += '.html'
             if len(li.split('.')) == 1:
                 li_str += '/'
+            if li_str[-1] != '/' and paths is not None:
+                size_str = os.stat(paths[n]).st_size
+                upd_str = datetime.fromtimestamp(os.path.getmtime(paths[n]))
+                li_str = '<span class="num_ord">0x%.4x</span> - <span class="leaf_link">%s</span>' % (n, li_str.replace('_', ' ').capitalize())
+                li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
+                li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
             if menu_tree is not None and li in menu_tree:                
                 out.append(item_str_selected.format(li_link, li_str))
             else:
@@ -223,9 +237,14 @@ class DrasilBifrost(object):
         context.template = self.template
 
         for n, l in enumerate(lines):
-            if l.find('[$') >= 0 and l.find('$]') >= 0:
-                # I've found a hook... parse it
-                lines[n] = self._apply_hooks(l, context)
+            stop = False
+            while not stop:
+                if l.find('[$') >= 0 and l.find('$]') >= 0:
+                    # I've found a hook... parse it
+                    l = self._apply_hooks(l, context)
+                else:
+                    stop = True
+            lines[n] = l
         return lines
 
     def _apply_hooks(self, text, context):
