@@ -23,7 +23,8 @@ class DrasilBifrost(object):
         self.current_node = None
         self.current_level = 0
 
-        self.brothers = None
+        self.parent = None
+        self.brothers = []
         self.uncles = []
     
         self.template = None
@@ -57,6 +58,7 @@ class DrasilBifrost(object):
                 print('|'*(level+1))
             if os.path.isdir(new_path):
                 step = copy.deepcopy(bifrost)
+                step.parent = new_path
                 if step.brothers not in step.uncles:
                     step.uncles.append(step.brothers)
                 step.walk()
@@ -169,7 +171,6 @@ class DrasilBifrost(object):
 
         menu_three = self._rel_path().split(os.path.sep)
 
-
         for u in self.uncles:
             if u is not None:
                 sorted_uncles = self._sort_ignoring_special_chars(u)
@@ -181,6 +182,8 @@ class DrasilBifrost(object):
         
         sorted_brothers = self._sort_ignoring_special_chars(self.brothers)
         if sorted_brothers is not None:
+            if self.parent is not None and os.path.split(self.parent)[-1][0] == ORDER_BY_DATE_MARKER:
+                sorted_brothers = self._sort_by_date(sorted_brothers, base_path=self.parent)
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
             menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three))
@@ -195,6 +198,15 @@ class DrasilBifrost(object):
         sorted_indices = [index for index, element in sorted_pairs]
         return [list[n] for n in sorted_indices]
 
+    def _sort_by_date(self, path_list, base_path=None):
+        if base_path is None:
+            base_path = self.current_node
+        upd_list = [os.path.getmtime(os.path.join(base_path, p)) for p in path_list]
+        enumerate_object = enumerate(upd_list)
+        sorted_pairs = sorted(enumerate_object, key=operator.itemgetter(1), reverse=True)
+        sorted_indices = [index for index, element in sorted_pairs]
+        return [path_list[n] for n in sorted_indices]
+
     def _render_indexer_page(self):
         page_title = self._short_name().replace(ORDER_BY_DATE_MARKER, '')
         if page_title[0].isdigit and page_title[1].isdigit and page_title[2] == '_':
@@ -203,16 +215,14 @@ class DrasilBifrost(object):
                 page_title = page_title[3:]
 
         out = ['<h2>' + page_title.capitalize() + '</h2>\n']
+        
         dir_list = os.listdir(self.current_node)
+
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
             if self._short_name()[0] == ORDER_BY_DATE_MARKER:
-                # sort by date
-                upd_list = [os.path.getmtime(os.path.join(self.current_node, p)) for p in dir_list]
-                enumerate_object = enumerate(upd_list)
-                sorted_pairs = sorted(enumerate_object, key=operator.itemgetter(1), reverse=True)
-                sorted_indices = [index for index, element in sorted_pairs]
-                dir_list = [dir_list[n] for n in sorted_indices]
+                # Sort by date
+                dir_list = self._sort_by_date(dir_list)
                 
             for element in dir_list:
                 element_path = os.path.join(self.current_node, element)
