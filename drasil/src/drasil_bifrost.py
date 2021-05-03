@@ -14,6 +14,7 @@ IGNORE_MARKER = '_'
 NO_LINK_MARKER = '$'
 ORDER_BY_DATE_MARKER = '%'
 
+
 class DrasilBifrost(object):
     def __init__(self, plugins=None):
         super(DrasilBifrost, self).__init__()
@@ -28,7 +29,7 @@ class DrasilBifrost(object):
         self.parent = None
         self.brothers = []
         self.uncles = []
-    
+
         self.template = None
 
     def walk(self):
@@ -38,12 +39,16 @@ class DrasilBifrost(object):
         level = bifrost.current_level
 
         bifrost.current_level += 1
+
         bifrost.brothers = [n for n in os.listdir(root)
                             if n[0] is not IGNORE_MARKER if n[0] is not '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
                             if os.path.split(n)[-1] != 'index.html'
                             if os.path.split(n)[-1] != 'index.htm'
-                            if os.path.split(n)[-1] != self._short_name() + '.html']
+                            if os.path.split(n)[-1] != self._short_name() + '.html'
+                            if os.path.split(n)[-1] != self._short_name()[3:] + '.html'
+                            if os.path.split(n)[-1] != self._short_name()[1:] + '.html'
+                            ]
 
         if level == 0:
             print('+')
@@ -90,10 +95,15 @@ class DrasilBifrost(object):
         leaf = self
         level = leaf.current_level
         node = leaf.current_node
-        
+
         file_name = os.path.split(node)[-1]
         if not leaf.is_leaf():
             # The node is a folder
+            if file_name[0].isdigit and file_name[1].isdigit and file_name[2] == '_':
+                # regex equivalent: ^[0-9]{2}_
+                file_name = file_name[3:]
+            file_name = file_name.replace(NO_LINK_MARKER, '')
+            file_name = file_name.replace(ORDER_BY_DATE_MARKER, '')
             file_name += '.html'
             # The node contains a [node].html page... do not render
             if os.path.exists(os.path.join(node, file_name)):
@@ -140,12 +150,12 @@ class DrasilBifrost(object):
                 pass
             elif node[-2:].lower() == 'md':
                 # TODO
-                pass    
+                pass
             else:
                 logging.warning('Node exestion not recognized, not parsing (%s)' % node)
                 return out
             out = self._load_content()
-        
+
         last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
 
         if render_as_html:
@@ -181,7 +191,7 @@ class DrasilBifrost(object):
                 menu.append(self._list_item_from_list(sorted_uncles, menu_tree=menu_three))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
-        
+
         sorted_brothers = self._sort_ignoring_special_chars(self.brothers)
         if sorted_brothers is not None:
             if self.parent is not None and os.path.split(self.parent)[-1][0] == ORDER_BY_DATE_MARKER:
@@ -195,11 +205,11 @@ class DrasilBifrost(object):
 
         return menu
 
-    def _sort_ignoring_special_chars(self, list):
-        enumerate_object = enumerate([e.replace(NO_LINK_MARKER, '').replace(ORDER_BY_DATE_MARKER, '') for e in list])
+    def _sort_ignoring_special_chars(self, list_to_sort):
+        enumerate_object = enumerate([e.replace(NO_LINK_MARKER, '').replace(ORDER_BY_DATE_MARKER, '') for e in list_to_sort])
         sorted_pairs = sorted(enumerate_object, key=operator.itemgetter(1))
         sorted_indices = [index for index, element in sorted_pairs]
-        return [list[n] for n in sorted_indices]
+        return [list_to_sort[n] for n in sorted_indices]
 
     def _sort_by_date(self, path_list, base_path=None):
         if base_path is None:
@@ -213,29 +223,35 @@ class DrasilBifrost(object):
     def _render_indexer_page(self):
         page_title = self._short_name().replace(ORDER_BY_DATE_MARKER, '')
         if page_title[0].isdigit and page_title[1].isdigit and page_title[2] == '_':
-                # remove the leading XX_ used for ordering menu items
-                # regex equivalent: ^[0-9]{2}_
-                page_title = page_title[3:]
+            # remove the leading XX_ used for ordering menu items
+            # regex equivalent: ^[0-9]{2}_
+            page_title = page_title[3:]
 
         out = ['<h2>' + page_title.capitalize() + '</h2>\n']
-        
-        dir_list = os.listdir(self.current_node)
 
+        dir_list = os.listdir(self.current_node)
+        dir_list = [d for d in dir_list if d[0] != '.']
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
             if self._short_name()[0] == ORDER_BY_DATE_MARKER:
                 # Sort by date
                 dir_list = self._sort_by_date(dir_list)
-                
+
             for element in dir_list:
                 element_path = os.path.join(self.current_node, element)
                 out.append(self._list_item_from_list([element], paths=[element_path]))
                 if os.path.isdir(element_path):
                     sub_dir_list = os.listdir(element_path)
+                    sub_dir_list = [d for d in sub_dir_list if d[0] != '.']
                     if element + '.html' in sub_dir_list:
                         sub_dir_list.remove(element + '.html')
+
+                    if element[0] == ORDER_BY_DATE_MARKER:
+                        # Order by date
+                        parent_path = os.path.join(self.current_node, element)
+                        sub_dir_list = self._sort_by_date(sub_dir_list, base_path=parent_path)
                     if len(sub_dir_list) > 0:
-                        
+
                         paths = [os.path.join(element_path,f) for f in sub_dir_list]
                         out.append(['<ul class="indexer_leaf">'])
                         out.append(self._list_item_from_list(sub_dir_list,
@@ -246,7 +262,7 @@ class DrasilBifrost(object):
 
     def _list_item_from_list(self, li_list, menu_tree=None, paths=None, more_allowed=False):
         out = []
-        # The standard, highlighted ("selcted") and "more" menu item strings
+        # The standard, highlighted ("selected") and "more" menu item strings
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
         item_str_more = '<li class=\"more\"><a href=\"{}\">see more ...</a></li>\n'
@@ -288,7 +304,7 @@ class DrasilBifrost(object):
                 # li_str = '<span class="num_ord">0x%.4x</span> - ' % n + li_str
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
-            if menu_tree is not None and li in menu_tree:   
+            if menu_tree is not None and li in menu_tree:
                 # if the menu entry is the current selected level, use the 
                 # "selected" CSS class for highlighting the entry             
                 out.append(item_str_selected.format(li_link, li_str))
@@ -334,13 +350,15 @@ class DrasilBifrost(object):
 
     def _short_name(self):
         return os.path.split(self.current_node)[-1].split('.')[0]
+
 # AUX methods
 
-def flatten(A):
+
+def flatten(a):
     # flatten a list of strings
     rt = []
-    for i in A:
-        if isinstance(i,list):
+    for i in a:
+        if isinstance(i, list):
             rt.extend(flatten(i))
         else:
             rt.append(i)
