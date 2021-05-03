@@ -90,6 +90,9 @@ class DrasilBifrost(object):
             if os.path.exists(os.path.join(node, file_name)):
                 return
 
+        if file_name[0].isdigit and file_name[1].isdigit and file_name[2] == '_':
+            # regex equivalent: ^[0-9]{2}_
+            file_name = file_name[3:]
         file_path = os.path.join(leaf.output_dir, file_name).replace(' ', '_')
         file_path = file_path.replace('+', '')
         file_dir = os.path.dirname(file_path)
@@ -106,7 +109,7 @@ class DrasilBifrost(object):
 
     def _generate(self):
         out = []
-        level = self.current_level
+        # level = self.current_level
         node = self.current_node
 
         render_as_html = False
@@ -157,22 +160,26 @@ class DrasilBifrost(object):
 
     def _gen_menu(self):
         menu = []
-        item_str = '<li><a href=\"{}\">{}</a></li>\n'
-        
+
         menu_three = self._rel_path().split(os.path.sep)
+
 
         for u in self.uncles:
             if u is not None:
+                sorted_uncles = u
+                sorted_uncles.sort()
                 menu.append('<div class="deep_menu">\n')
                 menu.append('<ul>\n')
-                menu.append(self._list_item_from_list(u, menu_tree=menu_three))
+                menu.append(self._list_item_from_list(sorted_uncles, menu_tree=menu_three))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
         
-        if self.brothers is not None:
+        sorted_brothers = self.brothers
+        sorted_brothers.sort()
+        if sorted_brothers is not None:
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            menu.append(self._list_item_from_list(self.brothers, menu_tree=menu_three))
+            menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -181,7 +188,6 @@ class DrasilBifrost(object):
     def _render_indexer_page(self):
         out = ['<h2>' + self._short_name() + '</h2>\n']
         dir_list = os.listdir(self.current_node)
-        item_str = '<li><a href=\"{}\">{}</a></li>\n'
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
             for element in dir_list:
@@ -201,27 +207,42 @@ class DrasilBifrost(object):
 
     def _list_item_from_list(self, li_list, menu_tree=None, paths=None):
         out = []
+        # The standard and highlighted ("selcted") menu item strings
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
+
+        # for each item in the menu, populate the <LI> tag
         for n, li in enumerate(li_list):
             if li[0] == '+':
                 # do not link files that starts with "+" marker
                 continue
+
+            # generate the item name and link
             li_str = li.split('.')[0]
             li_link = li.replace(' ', '_')
             if len(li_link.split('.')) == 1:
                 li_link += '.html'
             if len(li.split('.')) == 1:
                 li_str += '/'
+            if li_str[0].isdigit and li_str[1].isdigit and li_str[2] == '_':
+                # remove the leading XX_ used for ordering menu items
+                # regex equivalent: ^[0-9]{2}_
+                li_str = li_str[3:]
+                li_link = li_link[3:]
             if li_str[-1] != '/' and paths is not None:
+                # If the menu entry is not a folder ...
                 size_str = os.stat(paths[n]).st_size
                 upd_str = datetime.fromtimestamp(os.path.getmtime(paths[n]))
-                li_str = '<span class="num_ord">0x%.4x</span> - <span class="leaf_link">%s</span>' % (n, li_str.replace('_', ' ').capitalize())
+                li_str = '<span class="leaf_link">%s</span>' % (li_str.replace('_', ' ').capitalize())
+                # li_str = '<span class="num_ord">0x%.4x</span> - ' % n + li_str
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
-            if menu_tree is not None and li in menu_tree:                
+            if menu_tree is not None and li in menu_tree:   
+                # if the menu entry is the current selected level, use the 
+                # "selected" CSS class for highlighting the entry             
                 out.append(item_str_selected.format(li_link, li_str))
             else:
+                # not a "selected" item
                 out.append(item_str.format(li_link, li_str))
         return out
 
