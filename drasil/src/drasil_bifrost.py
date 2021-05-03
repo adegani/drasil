@@ -6,6 +6,8 @@ import operator
 from .drasil_plugins import DrasilPlugin
 from .drasil_context import DrasilContext
 
+MAX_MENU_ENTRY = 10
+
 ASSETS_FOLDER = 'assets'
 
 IGNORE_MARKER = '_'
@@ -184,9 +186,10 @@ class DrasilBifrost(object):
         if sorted_brothers is not None:
             if self.parent is not None and os.path.split(self.parent)[-1][0] == ORDER_BY_DATE_MARKER:
                 sorted_brothers = self._sort_by_date(sorted_brothers, base_path=self.parent)
+
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three))
+            menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three, more_allowed=True))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -241,13 +244,24 @@ class DrasilBifrost(object):
             out.append(['</ul>'])
         return out
 
-    def _list_item_from_list(self, li_list, menu_tree=None, paths=None):
+    def _list_item_from_list(self, li_list, menu_tree=None, paths=None, more_allowed=False):
         out = []
-        # The standard and highlighted ("selcted") menu item strings
+        # The standard, highlighted ("selcted") and "more" menu item strings
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
+        item_str_more = '<li class=\"more\"><a href=\"{}\">see more ...</a></li>\n'
         # for each item in the menu, populate the <LI> tag
         for n, li in enumerate(li_list):
+            if n > MAX_MENU_ENTRY-1 and self.parent is not None and more_allowed:
+                parent_link = os.path.split(self.parent)[-1] + '.html'
+
+                parent_link = parent_link.replace(ORDER_BY_DATE_MARKER, '')
+                if parent_link[0].isdigit and parent_link[1].isdigit and parent_link[2] == '_':
+                    # remove the leading XX_ used for ordering menu items
+                    # regex equivalent: ^[0-9]{2}_
+                    parent_link = parent_link[3:]
+                out.append(item_str_more.format(parent_link))
+                break
             if li[0] == NO_LINK_MARKER:
                 # do not link files that starts with NO_LINK_MARKER marker
                 continue
