@@ -2,10 +2,15 @@ import copy
 import logging
 import os.path
 from datetime import datetime
+import operator
 from .drasil_plugins import DrasilPlugin
 from .drasil_context import DrasilContext
 
 ASSETS_FOLDER = 'assets'
+
+IGNORE_MARKER = '_'
+NO_LINK_MARKER = '$'
+ORDER_BY_DATE_MARKER = '%'
 
 class DrasilBifrost(object):
     def __init__(self, plugins=None):
@@ -31,7 +36,7 @@ class DrasilBifrost(object):
 
         bifrost.current_level += 1
         bifrost.brothers = [n for n in os.listdir(root)
-                            if n[0] is not '_' if n[0] is not '.'
+                            if n[0] is not IGNORE_MARKER if n[0] is not '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
                             if os.path.split(n)[-1] != 'index.html'
                             if os.path.split(n)[-1] != 'index.htm'
@@ -43,7 +48,7 @@ class DrasilBifrost(object):
 
         for node in os.listdir(root):
             # print('NODE: %s' % node)
-            if node[0] == '_' or node[0] == '.' or node == ASSETS_FOLDER:
+            if node[0] == IGNORE_MARKER or node[0] == '.' or node == ASSETS_FOLDER:
                 continue
 
             new_path = os.path.join(root, node)
@@ -94,7 +99,8 @@ class DrasilBifrost(object):
             # regex equivalent: ^[0-9]{2}_
             file_name = file_name[3:]
         file_path = os.path.join(leaf.output_dir, file_name).replace(' ', '_')
-        file_path = file_path.replace('+', '')
+        file_path = file_path.replace(NO_LINK_MARKER, '')
+        file_path = file_path.replace(ORDER_BY_DATE_MARKER, '')
         file_dir = os.path.dirname(file_path)
 
         logging.info('Rendering [level %d page] %s' % (level, file_path))
@@ -166,16 +172,14 @@ class DrasilBifrost(object):
 
         for u in self.uncles:
             if u is not None:
-                sorted_uncles = u
-                sorted_uncles.sort()
+                sorted_uncles = self._sort_ignoring_special_chars(u)
                 menu.append('<div class="deep_menu">\n')
                 menu.append('<ul>\n')
                 menu.append(self._list_item_from_list(sorted_uncles, menu_tree=menu_three))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
         
-        sorted_brothers = self.brothers
-        sorted_brothers.sort()
+        sorted_brothers = self._sort_ignoring_special_chars(self.brothers)
         if sorted_brothers is not None:
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
@@ -185,11 +189,31 @@ class DrasilBifrost(object):
 
         return menu
 
+    def _sort_ignoring_special_chars(self, list):
+        enumerate_object = enumerate([e.replace(NO_LINK_MARKER, '').replace(ORDER_BY_DATE_MARKER, '') for e in list])
+        sorted_pairs = sorted(enumerate_object, key=operator.itemgetter(1))
+        sorted_indices = [index for index, element in sorted_pairs]
+        return [list[n] for n in sorted_indices]
+
     def _render_indexer_page(self):
-        out = ['<h2>' + self._short_name() + '</h2>\n']
+        page_title = self._short_name().replace(ORDER_BY_DATE_MARKER, '')
+        if page_title[0].isdigit and page_title[1].isdigit and page_title[2] == '_':
+                # remove the leading XX_ used for ordering menu items
+                # regex equivalent: ^[0-9]{2}_
+                page_title = page_title[3:]
+
+        out = ['<h2>' + page_title.capitalize() + '</h2>\n']
         dir_list = os.listdir(self.current_node)
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
+            if self._short_name()[0] == ORDER_BY_DATE_MARKER:
+                # sort by date
+                upd_list = [os.path.getmtime(os.path.join(self.current_node, p)) for p in dir_list]
+                enumerate_object = enumerate(upd_list)
+                sorted_pairs = sorted(enumerate_object, key=operator.itemgetter(1), reverse=True)
+                sorted_indices = [index for index, element in sorted_pairs]
+                dir_list = [dir_list[n] for n in sorted_indices]
+                
             for element in dir_list:
                 element_path = os.path.join(self.current_node, element)
                 out.append(self._list_item_from_list([element], paths=[element_path]))
@@ -198,9 +222,11 @@ class DrasilBifrost(object):
                     if element + '.html' in sub_dir_list:
                         sub_dir_list.remove(element + '.html')
                     if len(sub_dir_list) > 0:
+                        
                         paths = [os.path.join(element_path,f) for f in sub_dir_list]
                         out.append(['<ul class="indexer_leaf">'])
-                        out.append(self._list_item_from_list(sub_dir_list, paths=paths))
+                        out.append(self._list_item_from_list(sub_dir_list,
+                                                             paths=paths))
                         out.append(['</ul>'])
             out.append(['</ul>'])
         return out
@@ -210,16 +236,17 @@ class DrasilBifrost(object):
         # The standard and highlighted ("selcted") menu item strings
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
-
         # for each item in the menu, populate the <LI> tag
         for n, li in enumerate(li_list):
-            if li[0] == '+':
-                # do not link files that starts with "+" marker
+            if li[0] == NO_LINK_MARKER:
+                # do not link files that starts with NO_LINK_MARKER marker
                 continue
 
-            # generate the item name and link
+            # generate the item name and link to be put in <LI> item
             li_str = li.split('.')[0]
+            li_str = li_str.replace(ORDER_BY_DATE_MARKER, '')
             li_link = li.replace(' ', '_')
+            li_link = li_link.replace(ORDER_BY_DATE_MARKER, '')
             if len(li_link.split('.')) == 1:
                 li_link += '.html'
             if len(li.split('.')) == 1:
