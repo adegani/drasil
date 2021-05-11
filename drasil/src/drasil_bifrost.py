@@ -13,6 +13,8 @@ ASSETS_FOLDER = 'assets'
 IGNORE_MARKER = '_'
 NO_LINK_MARKER = '$'
 ORDER_BY_DATE_MARKER = '%'
+LEFT_HOOK_MARKER = '[$'
+RIGHT_HOOK_MARKER = '$]'
 
 
 class DrasilBifrost(object):
@@ -156,9 +158,8 @@ class DrasilBifrost(object):
                 return out
             out = self._load_content()
 
-        last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
-
         if render_as_html:
+            last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
             template = self._load_template()
             for n, line in enumerate(template):
                 # parsing built-in hooks
@@ -194,7 +195,7 @@ class DrasilBifrost(object):
 
         sorted_brothers = self._sort_ignoring_special_chars(self.brothers)
         if sorted_brothers is not None:
-            if self.parent is not None and os.path.split(self.parent)[-1][0] == ORDER_BY_DATE_MARKER:
+            if self.parent is not None and os.path.split(self.parent)[-1].find(ORDER_BY_DATE_MARKER) != -1:
                 sorted_brothers = self._sort_by_date(sorted_brothers, base_path=self.parent)
 
             menu.append('<div class="menu">\n')
@@ -233,7 +234,7 @@ class DrasilBifrost(object):
         dir_list = [d for d in dir_list if d[0] != '.']
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])
-            if self._short_name()[0] == ORDER_BY_DATE_MARKER:
+            if self._short_name().find(ORDER_BY_DATE_MARKER) != -1:
                 # Sort by date
                 dir_list = self._sort_by_date(dir_list)
 
@@ -246,7 +247,7 @@ class DrasilBifrost(object):
                     if element + '.html' in sub_dir_list:
                         sub_dir_list.remove(element + '.html')
 
-                    if element[0] == ORDER_BY_DATE_MARKER:
+                    if element.find(ORDER_BY_DATE_MARKER) != -1:
                         # Order by date
                         parent_path = os.path.join(self.current_node, element)
                         sub_dir_list = self._sort_by_date(sub_dir_list, base_path=parent_path)
@@ -327,7 +328,7 @@ class DrasilBifrost(object):
         for n, l in enumerate(lines):
             stop = False
             while not stop:
-                if l.find('[$') >= 0 and l.find('$]') >= 0:
+                if l.find(LEFT_HOOK_MARKER) >= 0 and l.find(RIGHT_HOOK_MARKER) >= 0:
                     # I've found a hook... parse it
                     l = self._apply_hooks(l, context)
                 else:
@@ -336,8 +337,9 @@ class DrasilBifrost(object):
         return lines
 
     def _apply_hooks(self, text, context):
-        hook_begin = text.find('[$') + 2
-        hook_end = text.find('$]')
+        logging.debug('Hook found: %s' % text)
+        hook_begin = text.find(LEFT_HOOK_MARKER) + 2
+        hook_end = text.find(RIGHT_HOOK_MARKER)
         plug_run = self.plugins.run_hooks(text[hook_begin:hook_end], context)
         text =  text[:hook_begin - 2] + str(plug_run) + text[hook_end+2:]
         return text
