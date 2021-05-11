@@ -80,7 +80,14 @@ def main(argv):
         bifrost.template = os.path.join(bifrost.src_root, TEMPLATE_FILE)
         logging.info('Global template found: %s' % bifrost.template)
 
+    # Running the pre processing method of each plugins
+    plugins.run_pre()
+
+    # Walking on the Bifrost (i.e. recursively generate the website)
     bifrost.walk()
+
+    # Running the post processing method of each plugins
+    plugins.run_post()
 
     exec_time = time.time() - start_time
     print('\n%d steps walked on the Bifrost in %.2f seconds' % (DrasilBifrost.tot_steps, exec_time))

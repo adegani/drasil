@@ -46,7 +46,19 @@ class DrasilPlugin(object):
                 print('hooks: %s' % ', '.join(p['class'].hooks))
     
     def run_hooks(self, hook, context):
-        logging.debug('Running hook \"%s\"' % hook)
+        my_hook = hook.split(':')[0]
+        my_args = hook.split(':')[1:]
         for p in self.plugin_list:
-            if hook in p['hooks']:
-                return p['class'].run()
+            if my_hook in p['hooks']:
+                logging.debug('Running hook \"%s\" with args: %s' % (my_hook, my_args))
+                return p['class'].run(my_args, context)
+
+    def run_post(self):
+        for p in self.plugin_list:
+            logging.debug('Running post of \"%s\"' % p)
+            p['class'].post()
+    
+    def run_pre(self):
+        for p in self.plugin_list:
+            logging.debug('Running pre of \"%s\"' % p)
+            p['class'].pre()
