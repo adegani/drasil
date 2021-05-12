@@ -45,13 +45,13 @@ class DrasilPlugin(object):
                 print('-')
                 print('hooks: %s' % ', '.join(p['class'].hooks))
     
-    def run_hooks(self, hook, context):
+    def run_hooks(self, hook, context, template_empty):
         my_hook = hook.split(':')[0]
         my_args = hook.split(':')[1:]
         for p in self.plugin_list:
             if my_hook in p['hooks']:
                 logging.debug('Running hook \"%s\" with args: %s' % (my_hook, my_args))
-                return p['class'].run(my_args, context)
+                return p['class'].run(my_args, context, template_empty)
 
     def run_post(self):
         for p in self.plugin_list:

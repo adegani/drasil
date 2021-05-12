@@ -136,7 +136,6 @@ class DrasilBifrost(object):
 
         render_as_html = False
 
-        last_update = os.path.getmtime(node)
 
         if not self.is_leaf():
             out = self._render_indexer_page()
@@ -158,28 +157,60 @@ class DrasilBifrost(object):
                 return out
             out = self._load_content()
 
+        template_empty = None
         if render_as_html:
+            last_update = os.path.getmtime(node)
             last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
             template = self._load_template()
+            template_empty = template.copy()
             for n, line in enumerate(template):
-                # parsing built-in hooks
-                template[n] = str(template[n]).replace('[$PAGE_TITLE$]', self._short_name())
-                template[n] = str(template[n]).replace('[$lastupdate$]', last_update_str)
-                # template[n] = str(template[n]).replace('[$NAV_MENU$]', self._gen_menu())
-                if line.strip() == '[$NAV_MENU$]':
-                    template[n] = self._gen_menu()
-                if line.strip() == '[$BODY$]':
+                # Save the current line for empty template generation.
+                # The empty template is the main page tamplate with all plugins
+                # executed but the built-in hook PAGE_TITLE and BODY not executed
+                template_empty[n] = template[n]
+
+                if line.find('[%PAGE_TITLE%]') >= 0:
+                    template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
+
+                if line.find('[%BODY%]') >= 0:
                     template[n] = out
+
+                if line.find('[%LAST_UPDATE%]') >= 0:
+                    template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
+                    template_empty[n] = template[n]
+
+                if line.find('[%NAV_MENU%]') >= 0:
+                    template[n] = self._gen_menu()
+                    template_empty[n] = self._gen_menu(stop_at_first=True)
+                # parsing built-in hooks
+                # if str(template[n]).find('[%PAGE_TITLE%]'):
+                #     template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
+
+                # if str(template[n]).find('[%NAV_MENU%]'):
+                #     template[n] = self._gen_menu()
+                
+                # if str(template[n]).find('[%LAST_UPDATE%]'):
+                #     template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
+                
+                # # if str(template[n]).find('[%BODY%]'):
+                # #     template[n] = out
+                # template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
+                # template[n] = str(template[n]).replace('[$NAV_MENU$]', self._gen_menu())
+                # if line.strip() == '[%NAV_MENU%]':
+                #     template[n] = self._gen_menu()
+                #     template_empty[n] = self._gen_menu(stop_at_first=True)
+                # if line.strip() == '[%BODY%]':
+                #     template[n] = out
 
             # flatten the list
             out  = flatten(template)
 
         # search the hooks (i.e. plugins: [$...$])
-        out = self._parse_hooks(out)
+        out = self._parse_hooks(out, template_empty)
 
         return out
 
-    def _gen_menu(self):
+    def _gen_menu(self, stop_at_first=False):
         menu = []
 
         menu_three = self._rel_path().split(os.path.sep)
@@ -192,6 +223,8 @@ class DrasilBifrost(object):
                 menu.append(self._list_item_from_list(sorted_uncles, menu_tree=menu_three))
                 menu.append('</ul>\n')
                 menu.append('</div>\n')
+                if stop_at_first:
+                    return menu
 
         sorted_brothers = self._sort_ignoring_special_chars(self.brothers)
         if sorted_brothers is not None:
@@ -228,7 +261,7 @@ class DrasilBifrost(object):
             # regex equivalent: ^[0-9]{2}_
             page_title = page_title[3:]
 
-        out = ['<h2>' + page_title.capitalize() + '</h2>\n']
+        out = ['<h1>' + page_title.capitalize() + '</h1>\n']
 
         dir_list = os.listdir(self.current_node)
         dir_list = [d for d in dir_list if d[0] != '.']
@@ -314,7 +347,10 @@ class DrasilBifrost(object):
                 out.append(item_str.format(li_link, li_str))
         return out
 
-    def _parse_hooks(self, lines):
+    def _parse_hooks(self, lines, template_empty):
+        if template_empty is not None:
+            template_empty = self._parse_hooks(flatten(template_empty), None)
+
         context = DrasilContext()
         context.plugins = self.plugins
         context.src_root = self.src_root
@@ -330,17 +366,19 @@ class DrasilBifrost(object):
             while not stop:
                 if l.find(LEFT_HOOK_MARKER) >= 0 and l.find(RIGHT_HOOK_MARKER) >= 0:
                     # I've found a hook... parse it
-                    l = self._apply_hooks(l, context)
+                    l = self._apply_hooks(l, context, template_empty)
                 else:
                     stop = True
             lines[n] = l
         return lines
 
-    def _apply_hooks(self, text, context):
+    def _apply_hooks(self, text, context, template_empty):
         logging.debug('Hook found: %s' % text)
         hook_begin = text.find(LEFT_HOOK_MARKER) + 2
         hook_end = text.find(RIGHT_HOOK_MARKER)
-        plug_run = self.plugins.run_hooks(text[hook_begin:hook_end], context)
+        plug_run = self.plugins.run_hooks(text[hook_begin:hook_end], context, template_empty)
+        if plug_run is None:
+            plug_run =  '[HOOK NOT FOUND: ' + text[hook_begin:hook_end] + ']'
         text =  text[:hook_begin - 2] + str(plug_run) + text[hook_end+2:]
         return text
 
@@ -351,7 +389,13 @@ class DrasilBifrost(object):
         return self.current_node.replace(self.src_root, '')
 
     def _short_name(self):
-        return os.path.split(self.current_node)[-1].split('.')[0]
+        name = os.path.split(self.current_node)[-1].split('.')[0]
+        name = name.replace(ORDER_BY_DATE_MARKER, '')
+        if len(name) > 3:
+            if name[0].isdigit and name[1].isdigit and name[2] == '_':
+                # regex equivalent: ^[0-9]{2}_
+                name = name[3:]
+        return name
 
 # AUX methods
 
