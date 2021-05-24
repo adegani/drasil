@@ -159,8 +159,11 @@ class DrasilBifrost(object):
 
         template_empty = None
         if render_as_html:
+            # get the last update date of the file to be genrated
             last_update = os.path.getmtime(node)
             last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
+
+            # load the template for the current directory
             template = self._load_template()
             template_empty = template.copy()
             for n, line in enumerate(template):
@@ -169,38 +172,25 @@ class DrasilBifrost(object):
                 # executed but the built-in hook PAGE_TITLE and BODY not executed
                 template_empty[n] = template[n]
 
+                # parsing built-in hooks
                 if line.find('[%PAGE_TITLE%]') >= 0:
                     template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
 
                 if line.find('[%BODY%]') >= 0:
-                    template[n] = out
+                    # template[n] = out
+                    template[n] = str(template[n]).replace('[%BODY%]', ''.join(flatten(out)))
 
                 if line.find('[%LAST_UPDATE%]') >= 0:
                     template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
+                    # update also the empty template
                     template_empty[n] = template[n]
 
                 if line.find('[%NAV_MENU%]') >= 0:
-                    template[n] = self._gen_menu()
-                    template_empty[n] = self._gen_menu(stop_at_first=True)
-                # parsing built-in hooks
-                # if str(template[n]).find('[%PAGE_TITLE%]'):
-                #     template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
-
-                # if str(template[n]).find('[%NAV_MENU%]'):
-                #     template[n] = self._gen_menu()
-                
-                # if str(template[n]).find('[%LAST_UPDATE%]'):
-                #     template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
-                
-                # # if str(template[n]).find('[%BODY%]'):
-                # #     template[n] = out
-                # template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
-                # template[n] = str(template[n]).replace('[$NAV_MENU$]', self._gen_menu())
-                # if line.strip() == '[%NAV_MENU%]':
-                #     template[n] = self._gen_menu()
-                #     template_empty[n] = self._gen_menu(stop_at_first=True)
-                # if line.strip() == '[%BODY%]':
-                #     template[n] = out
+                    # update also the empty template
+                    # template_empty[n] = self._gen_menu(stop_at_first=True)
+                    template_empty[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu(stop_at_first=True))))
+                    # template[n] = self._gen_menu()
+                    template[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu())))
 
             # flatten the list
             out  = flatten(template)
@@ -330,11 +320,13 @@ class DrasilBifrost(object):
                 # regex equivalent: ^[0-9]{2}_
                 li_str = li_str[3:]
                 li_link = li_link[3:]
+
+            li_str = li_str.replace('_', ' ')
             if li_str[-1] != '/' and paths is not None:
                 # If the menu entry is not a folder ...
                 size_str = os.stat(paths[n]).st_size
                 upd_str = datetime.fromtimestamp(os.path.getmtime(paths[n]))
-                li_str = '<span class="leaf_link">%s</span>' % (li_str.replace('_', ' ').capitalize())
+                li_str = '<span class="leaf_link">%s</span>' % (li_str.capitalize())
                 # li_str = '<span class="num_ord">0x%.4x</span> - ' % n + li_str
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
