@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.CRITICAL,
                     # filename='example.log',
                     format='%(asctime)s:DRASIL:%(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
+
+
 def main(argv):
 
     args = parse_args(argv)
@@ -103,6 +105,7 @@ def main(argv):
 
     exit(0)
 
+
 def parse_args(argv):
     """CLI arguments parsing
 
@@ -134,6 +137,7 @@ def parse_args(argv):
     res = parser.parse_args(argv[1:])
 
     return res
+
 
 if __name__ == '__main__':
     main(sys.argv)
