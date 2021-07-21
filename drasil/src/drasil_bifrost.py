@@ -31,6 +31,7 @@ class DrasilBifrost(object):
         self.parent = None
         self.brothers = []
         self.uncles = []
+        self.childs = []
 
         self.template = None
 
@@ -41,7 +42,7 @@ class DrasilBifrost(object):
         level = bifrost.current_level
 
         bifrost.current_level += 1
-
+        bifrost.childs = []
         bifrost.brothers = [n for n in os.listdir(root)
                             if n[0] is not IGNORE_MARKER if n[0] is not '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
@@ -66,15 +67,31 @@ class DrasilBifrost(object):
             if os.path.isfile(new_path):
                 print('|'*(level+1))
             if os.path.isdir(new_path):
+                
                 step = copy.deepcopy(bifrost)
                 step.parent = new_path
+
                 if step.brothers not in step.uncles:
                     step.uncles.append(step.brothers)
                 step.walk()
 
             str_tpl = (bifrost._rel_path(), ', '.join(bifrost.brothers))
+
+            if os.path.isdir(new_path):
+                bifrost.childs = [n for n in os.listdir(new_path)
+                            if n[0] is not IGNORE_MARKER if n[0] is not '.'
+                            if os.path.split(n)[-1] != ASSETS_FOLDER
+                            if os.path.split(n)[-1] != 'index.html'
+                            if os.path.split(n)[-1] != 'index.htm'
+                            if os.path.split(n)[-1] != self._short_name() + '.html'
+                            if os.path.split(n)[-1] != self._short_name()[3:] + '.html'
+                            if os.path.split(n)[-1] != self._short_name()[1:] + '.html'
+                            ]
+            else:
+                bifrost.childs = []
             logging.debug('I\'m %s and my brothers are: %s' % str_tpl)
             logging.debug('My uncles are: %s' % str(bifrost.uncles))
+            logging.debug('My childs are: %s' % str(bifrost.childs))
             bifrost._node_render()
 
     def _load_template(self):
@@ -227,6 +244,17 @@ class DrasilBifrost(object):
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
+        sorted_childs = self._sort_ignoring_special_chars(self.childs)
+        if sorted_childs is not None:
+            if self.parent is not None and os.path.split(self.parent)[-1].find(ORDER_BY_DATE_MARKER) != -1:
+                sorted_childs = self._sort_by_date(sorted_childs, base_path=self.parent)
+
+            menu.append('<div class="menu">\n')
+            menu.append('<ul>\n')
+            menu.append(self._list_item_from_list(sorted_childs, menu_tree=menu_three, more_allowed=True))
+            menu.append('</ul>\n')
+            menu.append('</div>\n')
+
         return menu
 
     def _sort_ignoring_special_chars(self, list_to_sort):
@@ -351,6 +379,7 @@ class DrasilBifrost(object):
         context.current_level = self.current_level
         context.brothers = self.brothers
         context.uncles = self.uncles
+        context.childs = self.childs
         context.template = self.template
 
         for n, l in enumerate(lines):

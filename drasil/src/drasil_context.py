@@ -9,5 +9,6 @@ class DrasilContext(object):
 
         self.brothers = None
         self.uncles = []
+        self.childs = []
     
         self.template = None
