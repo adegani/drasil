@@ -365,10 +365,11 @@ class DrasilBifrost(object):
         return lines
 
     def _apply_hooks(self, text, context, template_empty):
-        logging.debug('Hook found: %s' % text)
+        # logging.debug('Hook found: %s' % text)
         hook_begin = text.find(LEFT_HOOK_MARKER) + 2
         hook_end = text.find(RIGHT_HOOK_MARKER)
         plug_run = self.plugins.run_hooks(text[hook_begin:hook_end], context, template_empty)
+        logging.debug('Hook found: %s' % text[hook_begin:hook_end])
         if plug_run is None:
             plug_run =  '[HOOK NOT FOUND: ' + text[hook_begin:hook_end] + ']'
         text =  text[:hook_begin - 2] + str(plug_run) + text[hook_end+2:]
