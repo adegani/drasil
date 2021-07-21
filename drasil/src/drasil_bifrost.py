@@ -251,7 +251,7 @@ class DrasilBifrost(object):
             # regex equivalent: ^[0-9]{2}_
             page_title = page_title[3:]
 
-        out = ['<h1>' + page_title.capitalize() + '</h1>\n']
+        out = ['<h2>' + page_title.capitalize() + '</h2>\n']
 
         dir_list = os.listdir(self.current_node)
         dir_list = [d for d in dir_list if d[0] != '.']
