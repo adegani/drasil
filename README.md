@@ -10,7 +10,7 @@ Use Python >= 3.6
 ## Install from source
 
 	cd drasil
-	python setup.py install
+	pip install .
 
 ## Create a distributable tar ball and install
 
@@ -19,4 +19,4 @@ Use Python >= 3.6
 	cd dist
 	tar xzf drasil-[VERSION].tar.gz
 	cd drasil-[VERSION]
-	python setup.py install 
+	python setup.py install

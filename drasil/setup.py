@@ -19,5 +19,10 @@ setup(
     url='https://github.com/adegani/drasil',
     license=license,
     packages=find_packages(exclude=('tests', 'docs')),
-    scripts = ["drasil"],
+    scripts=["drasil"],
+    install_requires=[
+        'ddate>=0.1.2',
+        'importlib-metadata==1.5.0',
+        'pillow'
+    ]
 )
