@@ -44,7 +44,7 @@ class DrasilBifrost(object):
         bifrost.current_level += 1
         bifrost.childs = []
         bifrost.brothers = [n for n in os.listdir(root)
-                            if n[0] is not IGNORE_MARKER if n[0] is not '.'
+                            if n[0] != IGNORE_MARKER if n[0] != '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
                             if os.path.split(n)[-1] != 'index.html'
                             if os.path.split(n)[-1] != 'index.htm'
@@ -67,7 +67,7 @@ class DrasilBifrost(object):
             if os.path.isfile(new_path):
                 print('|'*(level+1))
             if os.path.isdir(new_path):
-                
+
                 step = copy.deepcopy(bifrost)
                 step.parent = new_path
 
@@ -79,7 +79,7 @@ class DrasilBifrost(object):
 
             if os.path.isdir(new_path):
                 bifrost.childs = [n for n in os.listdir(new_path)
-                            if n[0] is not IGNORE_MARKER if n[0] is not '.'
+                            if n[0] != IGNORE_MARKER if n[0] != '.'
                             if os.path.split(n)[-1] != ASSETS_FOLDER
                             if os.path.split(n)[-1] != 'index.html'
                             if os.path.split(n)[-1] != 'index.htm'
@@ -359,8 +359,8 @@ class DrasilBifrost(object):
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
             if menu_tree is not None and li in menu_tree:
-                # if the menu entry is the current selected level, use the 
-                # "selected" CSS class for highlighting the entry             
+                # if the menu entry is the current selected level, use the
+                # "selected" CSS class for highlighting the entry
                 out.append(item_str_selected.format(li_link, li_str))
             else:
                 # not a "selected" item

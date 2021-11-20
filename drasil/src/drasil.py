@@ -1,5 +1,5 @@
 import os.path
-import time 
+import time
 import sys
 import argparse
 import logging
@@ -42,7 +42,7 @@ def main(argv):
     if args.plugin_list:
         plugins.print_list()
         exit(0)
-    
+
     if args.plugin_help is not None:
         plugins.print_help(args.plugin_help)
         exit(0)
@@ -114,7 +114,7 @@ def parse_args(argv):
 
     Returns:
         ArgumentParser: Parsed arguments
-    """    
+    """
     parser = argparse.ArgumentParser(
         description='Drasil, static HTML website generator V.' + VERSION,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
