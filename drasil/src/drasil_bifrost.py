@@ -303,7 +303,6 @@ class DrasilBifrost(object):
                         parent_path = os.path.join(self.current_node, element)
                         sub_dir_list = self._sort_by_date(sub_dir_list, base_path=parent_path)
                     if len(sub_dir_list) > 0:
-
                         paths = [os.path.join(element_path,f) for f in sub_dir_list]
                         out.append(['<ul class="indexer_leaf">'])
                         out.append(self._list_item_from_list(sub_dir_list,
