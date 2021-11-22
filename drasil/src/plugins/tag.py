@@ -3,7 +3,7 @@ from ..drasil_context import DrasilContext
 
 class DrasilPlug():
     hooks = ['tag']
-    name = 'Tag' 
+    name = 'Tag'
     description = 'Implement a simple tagging feature'
     help_str = 'You can tag a page using [$tag:tag_one:tag_two$] so that page '
     help_str += 'will be present in the tag specific page. For each tag, '
@@ -13,15 +13,15 @@ class DrasilPlug():
     tag_struct = {}
     template_empty = None
     out_dir = None
-    
+
     def pre(self, *argv):
         pass
 
     def run(self, *argv):
         caller = path.split(argv[1].current_node)[-1]
         DrasilPlug.out_dir = argv[1].output_dir
-        
-        tag_list = argv[0] 
+
+        tag_list = argv[0]
         DrasilPlug.template_empty = argv[2]
         # DrasilPlug.tag_struct.append({'caller': caller, 'tags': tag_list})
         tag_str = '<span class=\"tag_link\"><a href=\"tag_{}.html\">{}</a></span>'
@@ -39,7 +39,8 @@ class DrasilPlug():
 
         for t in DrasilPlug.tag_struct:
             content = self._render_tag_page(t, DrasilPlug.tag_struct[t])
-            file_path = path.join(DrasilPlug.out_dir, 'tag_%s.html' % t)
+            link = t.replace(' ', '_')
+            file_path = path.join(DrasilPlug.out_dir, 'tag_%s.html' % link)
             f = open(file_path, 'w')
             f.write(''.join(content))
             f.close()
@@ -58,8 +59,11 @@ class DrasilPlug():
                 template[n] = '<h1 class=\"tagged\">%s</h1>\n' % tag.replace('_', ' ').capitalize()
                 template[n] += '<ul class=\"tagged\">\n'
                 for p in page_list:
+                    if p[0].isdigit and p[1].isdigit and p[2] == '_':
+                        # remove the leading XX_ used for ordering
+                        p = p[3:]
                     sp = p.split('.')[0].replace('_', ' ').capitalize()
-
+                    link = p.replace(' ', '_')
                     template[n] += '<li><a href=\"%s\">%s</a></li>\n' % (p, sp)
                 template[n] += '</ul>\n'
 
@@ -69,7 +73,7 @@ class DrasilPlug():
                 template[n] += all_tags_str
 
         return flatten(template)
-    
+
 def flatten(a):
     # flatten a list of strings
     rt = []
