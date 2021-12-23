@@ -118,7 +118,7 @@ class DrasilBifrost(object):
         file_name = os.path.split(node)[-1]
         if not leaf.is_leaf():
             # The node is a folder
-            if file_name[0].isdigit and file_name[1].isdigit and file_name[2] == '_':
+            if self._is_integer(file_name[:2]) and file_name[2] == '_':
                 # regex equivalent: ^[0-9]{2}_
                 file_name = file_name[3:]
             file_name = file_name.replace(NO_LINK_MARKER, '')
@@ -128,7 +128,7 @@ class DrasilBifrost(object):
             if os.path.exists(os.path.join(node, file_name)):
                 return
 
-        if file_name[0].isdigit and file_name[1].isdigit and file_name[2] == '_':
+        if self._is_integer(file_name[:2]) and file_name[2] == '_':
             # regex equivalent: ^[0-9]{2}_
             file_name = file_name[3:]
         file_path = os.path.join(leaf.output_dir, file_name).replace(' ', '_')
@@ -274,7 +274,7 @@ class DrasilBifrost(object):
 
     def _render_indexer_page(self):
         page_title = self._short_name().replace(ORDER_BY_DATE_MARKER, '')
-        if page_title[0].isdigit and page_title[1].isdigit and page_title[2] == '_':
+        if self._is_integer(page_title[:2]) and page_title[2] == '_':
             # remove the leading XX_ used for ordering menu items
             # regex equivalent: ^[0-9]{2}_
             page_title = page_title[3:]
@@ -323,7 +323,7 @@ class DrasilBifrost(object):
                 parent_link = os.path.split(self.parent)[-1] + '.html'
 
                 parent_link = parent_link.replace(ORDER_BY_DATE_MARKER, '')
-                if parent_link[0].isdigit and parent_link[1].isdigit and parent_link[2] == '_':
+                if self._is_integer(parent_link[:2]) and parent_link[2] == '_':
                     # remove the leading XX_ used for ordering menu items
                     # regex equivalent: ^[0-9]{2}_
                     parent_link = parent_link[3:]
@@ -342,7 +342,7 @@ class DrasilBifrost(object):
                 li_link += '.html'
             if len(li.split('.')) == 1:
                 li_str += '/'
-            if li_str[0].isdigit and li_str[1].isdigit and li_str[2] == '_':
+            if self._is_integer(li_str[:2]) and li_str[2] == '_':
                 # remove the leading XX_ used for ordering menu items
                 # regex equivalent: ^[0-9]{2}_
                 li_str = li_str[3:]
@@ -413,10 +413,17 @@ class DrasilBifrost(object):
         name = os.path.split(self.current_node)[-1].split('.')[0]
         name = name.replace(ORDER_BY_DATE_MARKER, '')
         if len(name) > 3:
-            if name[0].isdigit and name[1].isdigit and name[2] == '_':
+            if self._is_integer(name[:2]) and name[2] == '_':
                 # regex equivalent: ^[0-9]{2}_
                 name = name[3:]
         return name
+    
+    def _is_integer(self, string):
+        try:
+            int(string)
+        except:
+            return False
+        return True
 
 # AUX methods
 
