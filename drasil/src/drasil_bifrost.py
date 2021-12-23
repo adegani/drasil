@@ -171,7 +171,7 @@ class DrasilBifrost(object):
                 pass
             else:
                 logging.warning('Node exestion not recognized, not parsing (%s)' % node)
-                return out
+                # return out
             out = self._load_content()
 
         template_empty = None
