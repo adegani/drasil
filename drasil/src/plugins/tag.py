@@ -27,7 +27,7 @@ class DrasilPlug():
         tag_str = '<span class=\"tag_link\"><a href=\"tag_{}.html\">{}</a></span>'
         ret_str = ''
         for t in tag_list:
-            ret_str += tag_str.format(t, t.replace('_', ' '))
+            ret_str += tag_str.format(t, t.upper())
             if t in DrasilPlug.tag_struct:
                 if caller not in DrasilPlug.tag_struct[t]:
                     DrasilPlug.tag_struct[t].append(caller)
@@ -56,7 +56,7 @@ class DrasilPlug():
                 template[n] = str(template[n]).replace('[%PAGE_TITLE%]', 'tag: %s' % tag.replace('_', ' '))
 
             if line.strip() == '[%BODY%]':
-                template[n] = '<h1 class=\"tagged\">%s</h1>\n' % tag.replace('_', ' ').capitalize()
+                template[n] = '<h2 class=\"tagged\">%s</h2>\n' % tag.upper()
                 template[n] += '<ul class=\"tagged\">\n'
                 for p in page_list:
                     if p[0].isdigit and p[1].isdigit and p[2] == '_':
@@ -68,7 +68,7 @@ class DrasilPlug():
                 template[n] += '</ul>\n'
 
                 tag_str = '<span class=\"tag_link\"><a href=\"tag_{}.html\">{}</a></span>'
-                all_tags_str = ''.join([tag_str.format(t, t.replace('_', ' ')) for t in DrasilPlug.tag_struct])
+                all_tags_str = ' '.join([tag_str.format(t, t.upper()) for t in DrasilPlug.tag_struct])
                 all_tags_str = '<div class=\"all_tags\">' + all_tags_str + '</div>\n'
                 template[n] += all_tags_str
 
