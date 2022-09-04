@@ -6,8 +6,6 @@ import operator
 from .drasil_plugins import DrasilPlugin
 from .drasil_context import DrasilContext
 
-MAX_MENU_ENTRY = 10
-
 ASSETS_FOLDER = 'assets'
 
 IGNORE_MARKER = '_'
@@ -240,7 +238,7 @@ class DrasilBifrost(object):
 
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three, more_allowed=True))
+            menu.append(self._list_item_from_list(sorted_brothers, menu_tree=menu_three))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -251,7 +249,7 @@ class DrasilBifrost(object):
 
             menu.append('<div class="menu">\n')
             menu.append('<ul>\n')
-            menu.append(self._list_item_from_list(sorted_childs, menu_tree=menu_three, more_allowed=True))
+            menu.append(self._list_item_from_list(sorted_childs, menu_tree=menu_three))
             menu.append('</ul>\n')
             menu.append('</div>\n')
 
@@ -289,10 +287,12 @@ class DrasilBifrost(object):
                 # Sort by date
                 dir_list = self._sort_by_date(dir_list)
 
-            for element in dir_list:
+            singleton_count = 0
+            already_printed_root = False
+            for n, element in enumerate(dir_list):
                 element_path = os.path.join(self.current_node, element)
-                out.append(self._list_item_from_list([element], paths=[element_path]))
                 if os.path.isdir(element_path):
+                    out.append(self._list_item_from_list([element], paths=[element_path], mod_count=n))
                     sub_dir_list = os.listdir(element_path)
                     sub_dir_list = [d for d in sub_dir_list if d[0] != '.']
                     if element + '.html' in sub_dir_list:
@@ -308,27 +308,26 @@ class DrasilBifrost(object):
                         out.append(self._list_item_from_list(sub_dir_list,
                                                              paths=paths))
                         out.append(['</ul>'])
+                else:
+                    if not already_printed_root:
+                        out.append('<li>[./]</li>')
+                        already_printed_root = True
+                    out.append(['<ul class="indexer_leaf">'])
+                    out.append(self._list_item_from_list([element], paths=[element_path], mod_count=singleton_count))
+                    out.append(['</ul>'])
+                    singleton_count += 1
+
+
             out.append(['</ul>'])
         return out
 
-    def _list_item_from_list(self, li_list, menu_tree=None, paths=None, more_allowed=False):
+    def _list_item_from_list(self, li_list, mod_count=0, menu_tree=None, paths=None):
         out = []
-        # The standard, highlighted ("selected") and "more" menu item strings
+        # The standard and highlighted ("selected")
         item_str = '<li><a href=\"{}\">{}</a></li>\n'
         item_str_selected = '<li class=\"selected\"><a href=\"{}\">{}</a></li>\n'
-        item_str_more = '<li class=\"more\"><a href=\"{}\">see more ...</a></li>\n'
         # for each item in the menu, populate the <LI> tag
         for n, li in enumerate(li_list):
-            if n > MAX_MENU_ENTRY-1 and self.parent is not None and more_allowed:
-                parent_link = os.path.split(self.parent)[-1] + '.html'
-
-                parent_link = parent_link.replace(ORDER_BY_DATE_MARKER, '')
-                if self._is_integer(parent_link[:2]) and parent_link[2] == '_':
-                    # remove the leading XX_ used for ordering menu items
-                    # regex equivalent: ^[0-9]{2}_
-                    parent_link = parent_link[3:]
-                out.append(item_str_more.format(parent_link))
-                break
             if li[0] == NO_LINK_MARKER:
                 # do not link files that starts with NO_LINK_MARKER marker
                 continue
@@ -353,7 +352,8 @@ class DrasilBifrost(object):
                 # If the menu entry is not a folder ...
                 size_str = os.stat(paths[n]).st_size
                 upd_str = datetime.fromtimestamp(os.path.getmtime(paths[n]))
-                li_str = '<span class="leaf_link">%s</span>' % (li_str.capitalize())
+                hex_string = '<span class="hex_num">0x%02x</span>' % (n + mod_count)
+                li_str = '<span class="leaf_link">%s %s.html</span>' % (hex_string, li_str.capitalize())
                 # li_str = '<span class="num_ord">0x%.4x</span> - ' % n + li_str
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
@@ -417,7 +417,7 @@ class DrasilBifrost(object):
                 # regex equivalent: ^[0-9]{2}_
                 name = name[3:]
         return name
-    
+
     def _is_integer(self, string):
         try:
             int(string)
