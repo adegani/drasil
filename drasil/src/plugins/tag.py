@@ -1,14 +1,15 @@
 import os.path as path
 from ..drasil_context import DrasilContext
 
+
 class DrasilPlug():
     hooks = ['tag']
     name = 'Tag'
     description = 'Implement a simple tagging feature'
     help_str = 'You can tag a page using [$tag:tag_one:tag_two$] so that page '
     help_str += 'will be present in the tag specific page. For each tag, '
-    help_str += 'a page called tag_tagname.html will be created. The page will '
-    help_str += 'list each page that calls that given tag'
+    help_str += 'a page called tag_tagname.html will be created. The page will'
+    help_str += ' list each page that calls that given tag'
 
     tag_struct = {}
     template_empty = None
@@ -59,6 +60,8 @@ class DrasilPlug():
                 template[n] = '<h2 class=\"tagged\">%s</h2>\n' % tag.upper()
                 template[n] += '<ul class=\"tagged\">\n'
                 for p in page_list:
+                    if p[0] == '$':
+                        continue
                     if p[0].isdigit and p[1].isdigit and p[2] == '_':
                         # remove the leading XX_ used for ordering
                         p = p[3:]
@@ -73,6 +76,7 @@ class DrasilPlug():
                 template[n] += all_tags_str
 
         return flatten(template)
+
 
 def flatten(a):
     # flatten a list of strings
