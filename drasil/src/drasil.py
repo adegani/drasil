@@ -55,7 +55,7 @@ def main(argv):
         logging.error(err_str)
         exit(1)
 
-    output_dir = args.OUTPUT_FOLDER
+    output_dir = args.out
     if not args.y:
         if os.path.exists(output_dir):
             resp = input('The path %s already exists. Overwrite? [Y/n] ' % output_dir)
@@ -118,7 +118,10 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(
         description='Drasil, static HTML website generator V.' + VERSION,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('OUTPUT_FOLDER', help='Compiled website output dir')
+    parser.add_argument('-o', '--out', help='Compiled website output dir',
+                        required=not (('-l' in argv) or
+                                      ('--plugin-list' in argv) or
+                                      ('--plugin-help' in argv)))
     parser.add_argument('-l', '--plugin-list', action='store_true',
                         help='Print the list of the installed plugins')
     parser.add_argument('--plugin-help', help='print the help of a given plugin')
