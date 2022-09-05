@@ -16,8 +16,11 @@ RIGHT_HOOK_MARKER = '$]'
 
 
 class DrasilBifrost(object):
-    def __init__(self, plugins=None):
+    def __init__(self, version, plugins=None):
         super(DrasilBifrost, self).__init__()
+
+        self.version = version
+
         DrasilBifrost.tot_steps = 0
 
         self.plugins = plugins
@@ -32,6 +35,8 @@ class DrasilBifrost(object):
         self.childs = []
 
         self.template = None
+        self.template_file = None
+        self.template_is_parsed = False
 
     def walk(self):
         bifrost = self
@@ -93,12 +98,24 @@ class DrasilBifrost(object):
             bifrost._node_render()
 
     def _load_template(self):
-        tmplt = self.template
-        data = ''
-        if tmplt is not None and os.path.exists(tmplt):
-            with open (tmplt, "r") as f:
-                data = f.readlines()
-        return data
+        if not self.template_is_parsed:
+            tmplt = self.template_file
+            data = ''
+            if tmplt is not None and os.path.exists(tmplt):
+                with open (tmplt, "r") as f:
+                    data = f.readlines()
+            self.template = data
+            self._parse_template()
+            self.template_is_parsed = True
+        return self.template
+
+    def _parse_template(self):
+        ver_str = self.version
+        for n, line in enumerate(self.template):
+            if line.find('[%VER%]') >= 0:
+                self.template[n] = str(self.template[n]).replace('[%VER%]', ver_str)
+
+        self.template = self._parse_hooks(self.template, None)
 
     def _load_content(self):
         tmplt = self.current_node
@@ -151,7 +168,6 @@ class DrasilBifrost(object):
 
         render_as_html = False
 
-
         if not self.is_leaf():
             out = self._render_indexer_page()
             render_as_html = True
@@ -176,10 +192,11 @@ class DrasilBifrost(object):
         if render_as_html:
             # get the last update date of the file to be genrated
             last_update = os.path.getmtime(node)
-            last_update_str = 'Last update: %s' % datetime.fromtimestamp(last_update)
+            last_update_str = '%s' % datetime.fromtimestamp(last_update)
+            ver_str = self.version
 
             # load the template for the current directory
-            template = self._load_template()
+            template = self._load_template().copy()
             template_empty = template.copy()
             for n, line in enumerate(template):
                 # Save the current line for empty template generation.
@@ -199,6 +216,11 @@ class DrasilBifrost(object):
                     template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
                     # update also the empty template
                     template_empty[n] = template[n]
+
+                # if line.find('[%VER%]') >= 0:
+                #     template[n] = str(template[n]).replace('[%VER%]', ver_str)
+                #     # update also the empty template
+                #     template_empty[n] = template[n]
 
                 if line.find('[%NAV_MENU%]') >= 0:
                     # update also the empty template
@@ -310,7 +332,7 @@ class DrasilBifrost(object):
                         out.append(['</ul>'])
                 else:
                     if not already_printed_root:
-                        out.append('<li>[./]</li>')
+                        out.append('<li><a href="#"></href></li>')
                         already_printed_root = True
                     out.append(['<ul class="indexer_leaf">'])
                     out.append(self._list_item_from_list([element], paths=[element_path], mod_count=singleton_count))
@@ -379,7 +401,7 @@ class DrasilBifrost(object):
         context.brothers = self.brothers
         context.uncles = self.uncles
         context.childs = self.childs
-        context.template = self.template
+        context.template = self.template_file
 
         for n, l in enumerate(lines):
             stop = False
@@ -399,8 +421,8 @@ class DrasilBifrost(object):
         plug_run = self.plugins.run_hooks(text[hook_begin:hook_end], context, template_empty)
         logging.debug('Hook found: %s' % text[hook_begin:hook_end])
         if plug_run is None:
-            plug_run =  '[HOOK NOT FOUND: ' + text[hook_begin:hook_end] + ']'
-        text =  text[:hook_begin - 2] + str(plug_run) + text[hook_end+2:]
+            plug_run = '[HOOK NOT FOUND: ' + text[hook_begin:hook_end] + ']'
+        text = text[:hook_begin - 2] + str(plug_run) + text[hook_end+2:]
         return text
 
     def is_leaf(self):

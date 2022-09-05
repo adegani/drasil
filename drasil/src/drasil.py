@@ -37,7 +37,7 @@ def main(argv):
         exit(0)
 
     plugins = DrasilPlugin()
-    bifrost = DrasilBifrost(plugins)
+    bifrost = DrasilBifrost(VERSION, plugins)
 
     if args.plugin_list:
         plugins.print_list()
@@ -79,8 +79,8 @@ def main(argv):
 
     print('YGGDRASIL roots are in %s' % src_root)
     if os.path.exists(os.path.join(bifrost.src_root, TEMPLATE_FILE)):
-        bifrost.template = os.path.join(bifrost.src_root, TEMPLATE_FILE)
-        logging.info('Global template found: %s' % bifrost.template)
+        bifrost.template_file = os.path.join(bifrost.src_root, TEMPLATE_FILE)
+        logging.info('Global template found: %s' % bifrost.template_file)
 
     # Running the pre processing method of each plugins
     plugins.run_pre()
