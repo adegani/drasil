@@ -118,7 +118,7 @@ class DrasilBifrost(object):
             if line.find('[%VER%]') >= 0:
                 self.template[n] = str(self.template[n]).replace('[%VER%]', ver_str)
 
-        self.template = self._parse_hooks(self.template, None)
+        self.template = self._parse_plugins_hooks(self.template, None)
 
     def _load_content(self):
         tmplt = self.current_node
@@ -188,57 +188,83 @@ class DrasilBifrost(object):
                 pass
             else:
                 logging.warning('Node exestion not recognized, not parsing (%s)' % node)
-                # return out
-            out = self._load_content()
+                # return rendered
+            rendered = self._load_content()
 
         template_empty = None
-        if render_as_html:
-            # get the last update date of the file to be genrated
-            last_update = os.path.getmtime(node)
-            last_update_str = '%s' % datetime.fromtimestamp(last_update)
-            ver_str = self.version
 
-            # load the template for the current directory
-            template = self._load_template().copy()
-            template_empty = template.copy()
-            for n, line in enumerate(template):
-                # Save the current line for empty template generation.
-                # The empty template is the main page tamplate with all plugins
-                # executed but the built-in hook PAGE_TITLE and BODY not executed
+        # load the template for the current directory
+        template = self._load_template().copy()
+        template_empty = template.copy()
+        if render_as_html:
+            # run only template built-in hooks
+            rendered = self._parse_only_template_hooks(node, rendered, template, template_empty)
+
+        # run built-in hooks
+        rendered = self._parse_builtin_hooks(node, rendered)
+        # run plug-ins hooks (i.e. plugins: [$...$])
+        rendered = self._parse_plugins_hooks(rendered, template_empty)
+
+        return rendered
+
+    def _parse_builtin_hooks(self, node, out):
+        ver_str = self.version
+
+        for n, line in enumerate(out):
+            # parsing built-in hooks
+            if line.find('[%VER%]') >= 0:
+                out[n] = str(out[n]).replace('[%VER%]', ver_str)
+
+            if line.find('[%TREE_GEN%]') >= 0:
+                out[n] = str(out[n]).replace('[%TREE_GEN%]', tree_generator(self.src_root))
+
+        # flatten the list
+        return flatten(out)
+
+    def _parse_only_template_hooks(self, node, out, template, template_empty):
+        # get the last update date of the file to be genrated
+        last_update = os.path.getmtime(node)
+        last_update_str = '%s' % datetime.fromtimestamp(last_update)
+        ver_str = self.version
+
+        for n, line in enumerate(template):
+            # Save the current line for empty template generation.
+            # The empty template is the main page tamplate with all plugins
+            # executed but the built-in hook PAGE_TITLE and BODY not executed
+            template_empty[n] = template[n]
+
+            # parsing built-in hooks
+            if line.find('[%PAGE_TITLE%]') >= 0:
+                template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
+
+            if line.find('[%BODY%]') >= 0:
+                # template[n] = out
+                template[n] = str(template[n]).replace('[%BODY%]', ''.join(flatten(out)))
+
+            if line.find('[%LAST_UPDATE%]') >= 0:
+                template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
+                # update also the empty template
                 template_empty[n] = template[n]
 
-                # parsing built-in hooks
-                if line.find('[%PAGE_TITLE%]') >= 0:
-                    template[n] = str(template[n]).replace('[%PAGE_TITLE%]', self._short_name())
+            # if line.find('[%VER%]') >= 0:
+            #     template[n] = str(template[n]).replace('[%VER%]', ver_str)
+            #     # update also the empty template
+            #     template_empty[n] = template[n]
 
-                if line.find('[%BODY%]') >= 0:
-                    # template[n] = out
-                    template[n] = str(template[n]).replace('[%BODY%]', ''.join(flatten(out)))
+            # if line.find('[%TREE_GEN%]') >= 0:
+            #     template[n] = str(template[n]).replace('[%TREE_GEN%]', tree_generator(self.src_root))
+            #     # update also the empty template
+            #     template_empty[n] = template[n]
 
-                if line.find('[%LAST_UPDATE%]') >= 0:
-                    template[n] = str(template[n]).replace('[%LAST_UPDATE%]', last_update_str)
-                    # update also the empty template
-                    template_empty[n] = template[n]
+            if line.find('[%NAV_MENU%]') >= 0:
+                # update also the empty template
+                # template_empty[n] = self._gen_menu(stop_at_first=True)
+                template_empty[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu(stop_at_first=True))))
+                # template[n] = self._gen_menu()
+                template[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu())))
 
-                # if line.find('[%VER%]') >= 0:
-                #     template[n] = str(template[n]).replace('[%VER%]', ver_str)
-                #     # update also the empty template
-                #     template_empty[n] = template[n]
-
-                if line.find('[%NAV_MENU%]') >= 0:
-                    # update also the empty template
-                    # template_empty[n] = self._gen_menu(stop_at_first=True)
-                    template_empty[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu(stop_at_first=True))))
-                    # template[n] = self._gen_menu()
-                    template[n] = str(template[n]).replace('[%NAV_MENU%]', ''.join(flatten(self._gen_menu())))
-
-            # flatten the list
-            out  = flatten(template)
-
-        # search the hooks (i.e. plugins: [$...$])
-        out = self._parse_hooks(out, template_empty)
-
-        return out
+        # flatten the list
+        return flatten(template)
 
     def _gen_menu(self, stop_at_first=False):
         menu = []
@@ -391,9 +417,9 @@ class DrasilBifrost(object):
                 out.append(item_str.format(li_link, li_str))
         return out
 
-    def _parse_hooks(self, lines, template_empty):
+    def _parse_plugins_hooks(self, lines, template_empty):
         if template_empty is not None:
-            template_empty = self._parse_hooks(flatten(template_empty), None)
+            template_empty = self._parse_plugins_hooks(flatten(template_empty), None)
 
         context = DrasilContext()
         context.plugins = self.plugins
@@ -446,9 +472,9 @@ class DrasilBifrost(object):
 
 # AUX methods
 def is_integer(string):
-        try:
-            int(string)
-        except:
+    try:
+        int(string)
+    except:
         return False
     return True
 
