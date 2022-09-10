@@ -449,11 +449,65 @@ def is_integer(string):
         try:
             int(string)
         except:
-            return False
-        return True
+        return False
+    return True
 
-# AUX methods
+def tree_generator(root, level: int=-1, limit_to_directories: bool=False,
+         length_limit: int=1000):
+    """Given a directory Path object print a visual tree structure"""
+    from pathlib import Path
+    from itertools import islice
 
+    anchor_str = '<a href="{}">{}</a>'
+
+    space =  '&nbsp;&nbsp;&nbsp;&nbsp;'
+    branch = '│&nbsp;&nbsp;&nbsp;'
+    tee =    '├──&nbsp;'
+    last =   '└──&nbsp;'
+
+    output = []
+
+    dir_path = Path(root) # accept string coerceable to Path
+    files = 0
+    directories = 0
+    output.append('<div class="dir_tree">\n')
+    def inner(dir_path: Path, prefix: str='', level=-1):
+        nonlocal files, directories
+        if not level:
+            return # 0, stop iterating
+        if limit_to_directories:
+            contents = [d for d in dir_path.iterdir() if d.is_dir()]
+        else:
+            contents = list(dir_path.iterdir())
+        pointers = [tee] * (len(contents) - 1) + [last]
+        for pointer, path in zip(pointers, contents):
+            if path.name[0] == '.' or path.name[0] == NO_LINK_MARKER or path.name[0] == IGNORE_MARKER:
+                continue
+            if path.is_dir():
+                if path.name == ASSETS_FOLDER:
+                    # yield prefix + pointer + path.name + '/ (not expanded)'
+                    # directories += 1
+                    continue
+                yield prefix + pointer + path.name + '/'
+                directories += 1
+                extension = branch if pointer == tee else space
+                yield from inner(path, prefix=prefix+extension, level=level-1)
+            elif not limit_to_directories:
+                link_str = path.name
+                if is_integer(link_str[:2]) and link_str[2] == '_':
+                    # regex equivalent: ^[0-9]{2}_
+                    link_str = link_str[3:]
+                yield prefix + pointer + anchor_str.format(link_str, path.name)
+                files += 1
+    output.append(dir_path.name+'<br>\n')
+    iterator = inner(dir_path, level=level)
+    for line in islice(iterator, length_limit):
+        output.append(line+'<br>\n')
+    if next(iterator, None):
+        output.append(f'... length_limit, {length_limit}, reached, counted:'+'<br>\n')
+    output.append(f'\n<br>{directories} directories' + (f', {files} files' if files else '')+'<br>\n')
+    output.append('</div>\n')
+    return ''.join(output)
 
 def flatten(a):
     # flatten a list of strings
