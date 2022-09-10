@@ -58,23 +58,26 @@ class DrasilBifrost(object):
 
         if level == 0:
             print('+')
-        print('='*(level+1))
+        print('='*(level+1), end='-\n')
 
         for node in os.listdir(root):
             # print('NODE: %s' % node)
             if node[0] == IGNORE_MARKER or node[0] == '.' or node == ASSETS_FOLDER:
+                print('|', end='')
                 continue
 
             new_path = os.path.join(root, node)
             bifrost.current_node = new_path
             if os.path.isfile(new_path):
-                print('|'*(level+1))
+                # print('|'*(level+1))
+                print('^', end='')
             if os.path.isdir(new_path):
-
+                print('/'*(level+1))
                 step = copy.deepcopy(bifrost)
                 step.parent = new_path
 
                 if step.brothers not in step.uncles:
+                    print('+', end='')
                     step.uncles.append(step.brothers)
                 step.walk()
 
@@ -133,7 +136,7 @@ class DrasilBifrost(object):
         file_name = os.path.split(node)[-1]
         if not leaf.is_leaf():
             # The node is a folder
-            if self._is_integer(file_name[:2]) and file_name[2] == '_':
+            if is_integer(file_name[:2]) and file_name[2] == '_':
                 # regex equivalent: ^[0-9]{2}_
                 file_name = file_name[3:]
             file_name = file_name.replace(NO_LINK_MARKER, '')
@@ -143,7 +146,7 @@ class DrasilBifrost(object):
             if os.path.exists(os.path.join(node, file_name)):
                 return
 
-        if self._is_integer(file_name[:2]) and file_name[2] == '_':
+        if is_integer(file_name[:2]) and file_name[2] == '_':
             # regex equivalent: ^[0-9]{2}_
             file_name = file_name[3:]
         file_path = os.path.join(leaf.output_dir, file_name).replace(' ', '_')
@@ -162,14 +165,14 @@ class DrasilBifrost(object):
         f.close()
 
     def _generate(self):
-        out = []
+        rendered = []
         # level = self.current_level
         node = self.current_node
 
         render_as_html = False
 
         if not self.is_leaf():
-            out = self._render_indexer_page()
+            rendered = self._render_indexer_page()
             render_as_html = True
         else:
             # Only a file with an extension listed here is created in the static folder
@@ -294,7 +297,7 @@ class DrasilBifrost(object):
 
     def _render_indexer_page(self):
         page_title = self._short_name().replace(ORDER_BY_DATE_MARKER, '')
-        if self._is_integer(page_title[:2]) and page_title[2] == '_':
+        if is_integer(page_title[:2]) and page_title[2] == '_':
             # remove the leading XX_ used for ordering menu items
             # regex equivalent: ^[0-9]{2}_
             page_title = page_title[3:]
@@ -363,7 +366,7 @@ class DrasilBifrost(object):
                 li_link += '.html'
             if len(li.split('.')) == 1:
                 li_str += '/'
-            if self._is_integer(li_str[:2]) and li_str[2] == '_':
+            if is_integer(li_str[:2]) and li_str[2] == '_':
                 # remove the leading XX_ used for ordering menu items
                 # regex equivalent: ^[0-9]{2}_
                 li_str = li_str[3:]
@@ -435,12 +438,14 @@ class DrasilBifrost(object):
         name = os.path.split(self.current_node)[-1].split('.')[0]
         name = name.replace(ORDER_BY_DATE_MARKER, '')
         if len(name) > 3:
-            if self._is_integer(name[:2]) and name[2] == '_':
+            if is_integer(name[:2]) and name[2] == '_':
                 # regex equivalent: ^[0-9]{2}_
                 name = name[3:]
         return name
 
-    def _is_integer(self, string):
+
+# AUX methods
+def is_integer(string):
         try:
             int(string)
         except:
