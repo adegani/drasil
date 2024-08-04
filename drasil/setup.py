@@ -23,6 +23,7 @@ setup(
     install_requires=[
         'ddate>=0.1.2',
         'importlib-metadata==1.5.0',
-        'pillow'
+        'pillow',
+        'setuptools'
     ]
 )
