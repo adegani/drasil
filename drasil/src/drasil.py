@@ -8,7 +8,7 @@ from distutils.dir_util import copy_tree
 from .drasil_bifrost import DrasilBifrost
 from .drasil_plugins import DrasilPlugin
 
-VERSION = '0.6'
+VERSION = '0.7'
 SCRIPT_FILE = os.path.realpath(__file__)
 
 TEMPLATE_FILE = '_template.html'

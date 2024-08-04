@@ -11,7 +11,7 @@ with open('../LICENSE') as f:
 
 setup(
     name='drasil',
-    version='0.1.0',
+    version='0.7.0',
     description='Static HTML website generator based on directory tree',
     long_description=readme,
     author='Alessio Degani',
