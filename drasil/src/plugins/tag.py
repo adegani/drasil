@@ -62,8 +62,8 @@ class DrasilPlug():
                 for p in page_list:
                     if p[0] == '$':
                         continue
-                    if p[0].isdigit and p[1].isdigit and p[2] == '_':
-                        # remove the leading XX_ used for ordering
+                    if p[0].isdigit() and p[1].isdigit() and p[2] == '_':
+                        # remove the leading number XX_ used for ordering
                         p = p[3:]
                     sp = p.split('.')[0].replace('_', ' ').capitalize()
                     link = p.replace(' ', '_')
