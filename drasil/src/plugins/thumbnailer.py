@@ -42,7 +42,7 @@ class DrasilPlug():
         if not path.exists(thumb_path):
             if path.exists(og_image_path):
                 image = image.resize((img_fixed_width, height_size), PIL.Image.BICUBIC)
-                image.save(thumb_path)
+                image.save(thumb_path, quality=90)
         img_tuple = (img_link, img_name, thumb_link, img_caption, specs_string)
         out_str = '<div class="picture">'
         out_str += '    <a href="%s" alt="%s"><img src="%s">%s <span class="picture_specs">%s</span></a>' % img_tuple
