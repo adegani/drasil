@@ -120,11 +120,14 @@ class DrasilBifrost(object):
 
         self.template = self._parse_plugins_hooks(self.template, None)
 
-    def _load_content(self):
+    def _load_content(self, binary=False):
         tmplt = self.current_node
+        mode = 'r'
+        if binary:
+            mode += 'b'
         data = ''
         if tmplt is not None and os.path.exists(tmplt):
-            with open (tmplt, "r") as f:
+            with open (tmplt, mode) as f:
                 data = f.readlines()
         return data
 
@@ -160,9 +163,16 @@ class DrasilBifrost(object):
             os.makedirs(file_dir)
 
         content = leaf._generate()
-        f = open(file_path, 'w')
-        f.write(''.join(content))
-        f.close()
+
+        try:
+            # if the content is a bynary file, copy it using binary write (es. for PDF)
+            f = open(file_path, 'w')
+            f.write(''.join(content))
+            f.close()
+        except TypeError:
+            f = open(file_path, 'wb')
+            f.writelines(content)
+            f.close()
 
     def _generate(self):
         rendered = []
@@ -170,6 +180,7 @@ class DrasilBifrost(object):
         node = self.current_node
 
         render_as_html = False
+        copy_and_link = False
 
         if not self.is_leaf():
             rendered = self._render_indexer_page()
@@ -180,6 +191,8 @@ class DrasilBifrost(object):
             # ELIF list. The renering switch is optional.
             if node[-4:].lower() == 'html' or node[-3:].lower() == 'htm':
                 render_as_html = True
+            elif node[-3:].lower() == 'pdf':
+                copy_and_link = True
             elif node[-3:].lower() == 'txt':
                 # TODO
                 pass
@@ -189,21 +202,23 @@ class DrasilBifrost(object):
             else:
                 logging.warning('Node exestion not recognized, not parsing (%s)' % node)
                 # return rendered
-            rendered = self._load_content()
 
-        template_empty = None
+            rendered = self._load_content(binary=copy_and_link)
 
-        # load the template for the current directory
-        template = self._load_template().copy()
-        template_empty = template.copy()
-        if render_as_html:
-            # run only template built-in hooks
-            rendered = self._parse_only_template_hooks(node, rendered, template, template_empty)
+        if not copy_and_link:
+            template_empty = None
 
-        # run built-in hooks
-        rendered = self._parse_builtin_hooks(node, rendered)
-        # run plug-ins hooks (i.e. plugins: [$...$])
-        rendered = self._parse_plugins_hooks(rendered, template_empty)
+            # load the template for the current directory
+            template = self._load_template().copy()
+            template_empty = template.copy()
+            if render_as_html:
+                # run only template built-in hooks
+                rendered = self._parse_only_template_hooks(node, rendered, template, template_empty)
+
+            # run built-in hooks
+            rendered = self._parse_builtin_hooks(node, rendered)
+            # run plug-ins hooks (i.e. plugins: [$...$])
+            rendered = self._parse_plugins_hooks(rendered, template_empty)
 
         return rendered
 
@@ -384,7 +399,8 @@ class DrasilBifrost(object):
                 continue
 
             # generate the item name and link to be put in <LI> item
-            li_str = li.split('.')[0]
+            li_str, li_extension = os.path.splitext(li)
+            li_extension = li_extension[1:]
             li_str = li_str.replace(ORDER_BY_DATE_MARKER, '')
             li_link = li.replace(' ', '_')
             li_link = li_link.replace(ORDER_BY_DATE_MARKER, '')
@@ -404,7 +420,7 @@ class DrasilBifrost(object):
                 size_str = os.stat(paths[n]).st_size
                 upd_str = datetime.fromtimestamp(os.path.getmtime(paths[n]))
                 hex_string = '<span class="hex_num">0x%02x</span>' % (n + mod_count)
-                li_str = '<span class="leaf_link">%s %s.html</span>' % (hex_string, li_str.capitalize())
+                li_str = '<span class="leaf_link">%s %s.%s</span>' % (hex_string, li_str.capitalize(), li_extension)
                 # li_str = '<span class="num_ord">0x%.4x</span> - ' % n + li_str
                 li_str += ' - <span class="update_str_list">last update: %s</span>' % upd_str
                 li_str += ' - <span class="file_size">(%s bytes)</span>' % size_str
