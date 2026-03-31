@@ -346,6 +346,7 @@ class DrasilBifrost(object):
         out = ['<h2>' + page_title.capitalize() + '</h2>\n']
 
         dir_list = os.listdir(self.current_node)
+        dir_list.sort()
         dir_list = [d for d in dir_list if d[0] != '.']
         if len(dir_list) > 0:
             out.append(['<ul class="indexer_node">'])

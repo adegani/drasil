@@ -16,17 +16,21 @@ class DrasilPlug():
         in_dir = argv[1].src_root
         cmd = 'git log --pretty=oneline'
         output = '[gitlog: ERROR, NOT A GIT REPO]'
-        hash_str = '<span class="git_hash">{}</span>'
-        msg_str = '<span class="git_commit_msg">{}</span>'
+        entry_str = '<div class="git_log_entry">'
+        entry_str += '    <span class="git_hash">2{}</span>'
+        entry_str += '    <span class="git_commit_msg">{}</span>'
+        entry_str += '</div>'
+
         try:
             output = subprocess.check_output(cmd.split(), cwd=in_dir).decode()
             decoded_txt = output.split('\n')
             for n, line in enumerate(decoded_txt):
                 if len(line.split()) > 0:
                     line = self._sanitize_html(line)
-                    decoded_txt[n] = hash_str.format(line.split()[0]) + ' ' +\
-                                     msg_str.format(' '.join(line.split()[1:]))\
-                                     + '<br>\n'
+                    # decoded_txt[n] = hash_str.format(line.split()[0]) + ' ' +\
+                    #                  msg_str.format(' '.join(line.split()[1:]))\
+                    #                  + '<br>\n'
+                    decoded_txt[n] = entry_str.format(line.split()[0], ' '.join(line.split()[1:]))
             output = ''.join(decoded_txt)
         except Exception as e:
             print(e)
