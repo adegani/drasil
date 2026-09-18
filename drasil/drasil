@@ -3,4 +3,4 @@
 from src import drasil
 import sys
 
-drasil.main(sys.argv)
+sys.exit(drasil.main())

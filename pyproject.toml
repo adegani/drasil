@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "drasil"
+version = "0.9.1"
+description = "Static HTML website generator based on directory tree"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Alessio Degani", email = "alessio.degani@gmail.com" },
+]
+dependencies = [
+    "ddate>=0.1.2",
+    "importlib-metadata==1.5.0",
+    "pillow",
+]
+
+[project.urls]
+Homepage = "https://github.com/adegani/drasil"
+
+[project.scripts]
+drasil = "src.drasil:main"
+
+[tool.setuptools.packages.find]
+where = ["drasil"]
+include = ["src", "src.*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+src = ["plugins/README"]

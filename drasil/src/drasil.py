@@ -1,86 +1,146 @@
-import os.path
 import time
 import sys
 import argparse
 import logging
-from distutils.dir_util import copy_tree
+import re
+from importlib.metadata import PackageNotFoundError, version as installed_version
+from pathlib import Path
+import shutil
 
 from .drasil_bifrost import DrasilBifrost
 from .drasil_plugins import DrasilPlugin
 
-VERSION = '0.8'
-SCRIPT_FILE = os.path.realpath(__file__)
+SCRIPT_FILE = Path(__file__).resolve()
+PYPROJECT_FILE = SCRIPT_FILE.parents[2] / 'pyproject.toml'
 
 TEMPLATE_FILE = '_template.html'
 
-logging.basicConfig(level=logging.CRITICAL,
-                    # filename='example.log',
-                    format='%(asctime)s:DRASIL:%(levelname)s - %(message)s',
-                    datefmt='%Y-%m-%d %H:%M:%S')
+LOG_FORMAT = '%(asctime)s:DRASIL:%(levelname)s - %(message)s'
+LOG_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
-def main(argv):
+def get_version():
+    """Return the installed distribution version or the local project version.
 
+    Returns:
+        Version declared in installed package metadata, falling back to the
+        local ``pyproject.toml`` when running directly from the checkout.
+
+    Raises:
+        RuntimeError: If no version declaration can be found.
+    """
+    try:
+        return installed_version('drasil')
+    except PackageNotFoundError:
+        project_config = PYPROJECT_FILE.read_text(encoding='utf-8')
+        match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']\s*$', project_config, re.MULTILINE)
+        if match:
+            return match.group(1)
+    raise RuntimeError(f'Unable to determine Drasil version from {PYPROJECT_FILE}')
+
+
+VERSION = get_version()
+
+
+def configure_logging(verbosity):
+    """Configure the root logger from a CLI verbosity count.
+
+    Args:
+        verbosity: Number of ``-v`` flags supplied by the user.
+    """
+    levels = (logging.CRITICAL, logging.WARNING, logging.INFO, logging.DEBUG)
+    logging.basicConfig(
+        level=levels[min(verbosity, len(levels) - 1)],
+        format=LOG_FORMAT,
+        datefmt=LOG_DATE_FORMAT,
+    )
+
+
+def paths_overlap(first, second):
+    """Return whether two resolved paths are identical or nested.
+
+    Args:
+        first: First resolved path to compare.
+        second: Second resolved path to compare.
+
+    Returns:
+        True when either path is the other path or one contains the other.
+    """
+    return first == second or first in second.parents or second in first.parents
+
+
+def main(argv=None):
+    """Run the static-site build command and return its process exit code.
+
+    Args:
+        argv: Command arguments excluding the executable name. Uses ``sys.argv``
+            when omitted.
+
+    Returns:
+        Zero on success, otherwise a non-zero process exit code.
+    """
     args = parse_args(argv)
+    configure_logging(args.verbose)
 
-    if args.v:
-        logging.getLogger().setLevel(logging.WARNING)
-    if args.vv:
-        logging.getLogger().setLevel(logging.INFO)
-    if args.vvv:
-        logging.getLogger().setLevel(logging.DEBUG)
-
-    mod_time = time.ctime(os.path.getmtime(SCRIPT_FILE))
-    print("This is Drasil!! (v%s - %s)" % (VERSION, mod_time))
+    mod_time = time.ctime(SCRIPT_FILE.stat().st_mtime)
+    print(f'This is Drasil!! (v{VERSION} - {mod_time})')
 
     if args.version:
-        exit(0)
+        return 0
 
     plugins = DrasilPlugin()
     bifrost = DrasilBifrost(VERSION, plugins)
 
     if args.plugin_list:
         plugins.print_list()
-        exit(0)
+        return 0
 
     if args.plugin_help is not None:
         plugins.print_help(args.plugin_help)
-        exit(0)
+        return 0
 
-    src_root = args.src
+    src_root = Path(args.src).expanduser().resolve()
+    output_dir = Path(args.out).expanduser().resolve()
 
-    if not os.path.exists(src_root):
-        err_str = 'The path %s does not exists' % src_root
+    if not src_root.is_dir():
+        err_str = f'The source path is not a directory: {src_root}'
         print(err_str)
         logging.error(err_str)
-        exit(1)
+        return 1
 
-    output_dir = args.out
-    if not args.y:
-        if os.path.exists(output_dir):
-            resp = input('The path %s already exists. Overwrite? [Y/n] ' % output_dir)
-            if not (len(resp) == 0 or resp.lower() == 'y'):
-                exit(0)
-    else:
-        logging.warning('The path %s already exists and will be overwritten' % output_dir)
-
-    if src_root == output_dir:
-        err_str = 'The src and the output path cannot be the same (%s)' % src_root
+    if paths_overlap(src_root, output_dir):
+        err_str = f'Source and output paths must not overlap ({src_root}, {output_dir})'
         print(err_str)
         logging.error(err_str)
-        exit(1)
+        return 1
 
-    bifrost.output_dir = output_dir
-    bifrost.src_root = src_root
-    bifrost.current_node = src_root
+    if output_dir.exists():
+        if output_dir.is_symlink() or not output_dir.is_dir():
+            err_str = f'Output path must be a real directory: {output_dir}'
+            print(err_str)
+            logging.error(err_str)
+            return 1
+        if not args.y:
+            response = input(f'The path {output_dir} already exists. Clean and overwrite? [Y/n] ')
+            if response.strip().lower() not in ('', 'y', 'yes'):
+                return 0
+        logging.warning('Cleaning output folder before build: %s', output_dir)
+        shutil.rmtree(output_dir)
 
-    start_time = time.time()
-    logging.info('Building website "%s" into folder "%s"' % (src_root, output_dir))
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    print('YGGDRASIL roots are in %s' % src_root)
-    if os.path.exists(os.path.join(bifrost.src_root, TEMPLATE_FILE)):
-        bifrost.template_file = os.path.join(bifrost.src_root, TEMPLATE_FILE)
-        logging.info('Global template found: %s' % bifrost.template_file)
+    bifrost.output_dir = str(output_dir)
+    bifrost.src_root = str(src_root)
+    bifrost.current_node = str(src_root)
+
+    start_time = time.perf_counter()
+    logging.info('Building website "%s" into folder "%s"', src_root, output_dir)
+
+    print(f'YGGDRASIL roots are in {src_root}')
+    template_file = src_root / TEMPLATE_FILE
+    if template_file.exists():
+        bifrost.template_file = str(template_file)
+        logging.info('Global template found: %s', template_file)
 
     # Running the pre processing method of each plugins
     plugins.run_pre()
@@ -91,37 +151,34 @@ def main(argv):
     # Running the post processing method of each plugins
     plugins.run_post()
 
-    exec_time = time.time() - start_time
-    print('\n%d steps walked on the Bifrost in %.2f seconds' % (DrasilBifrost.tot_steps, exec_time))
-    logging.info('Drasil job completed in %f seconds' % exec_time)
+    exec_time = time.perf_counter() - start_time
+    print(f'\n{DrasilBifrost.tot_steps} steps walked on the Bifrost in {exec_time:.2f} seconds')
+    logging.info('Drasil job completed in %f seconds', exec_time)
 
-    src_assets = os.path.join(bifrost.src_root, 'assets')
-    dest_assets = os.path.join(bifrost.output_dir, 'assets')
-    if os.path.exists(src_assets):
-        logging.info('Copying assets %s -> %s' % (src_assets, dest_assets))
-        copy_tree(src_assets, dest_assets)
+    src_assets = src_root / 'assets'
+    dest_assets = output_dir / 'assets'
+    if src_assets.is_dir():
+        logging.info('Copying assets %s -> %s', src_assets, dest_assets)
+        shutil.copytree(src_assets, dest_assets, dirs_exist_ok=True)
     else:
-        logging.warning('No assets folder found: %s' % src_assets)
+        logging.warning('No assets folder found: %s', src_assets)
 
-    exit(0)
+    return 0
 
 
-def parse_args(argv):
-    """CLI arguments parsing
+def parse_args(argv=None):
+    """Parse command-line arguments and validate arguments required for a build.
 
     Args:
-        argv (list): list of args to be parsed
+        argv (list | None): command arguments, excluding the executable name.
 
     Returns:
-        ArgumentParser: Parsed arguments
+        argparse.Namespace: Parsed arguments
     """
     parser = argparse.ArgumentParser(
         description='Drasil, static HTML website generator V.' + VERSION,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-o', '--out', help='Compiled website output dir',
-                        required=not (('-l' in argv) or
-                                      ('--plugin-list' in argv) or
-                                      ('--plugin-help' in argv)))
+    parser.add_argument('-o', '--out', help='Compiled website output dir', required=False)
     parser.add_argument('-l', '--plugin-list', action='store_true',
                         help='Print the list of the installed plugins')
     parser.add_argument('--plugin-help', help='print the help of a given plugin')
@@ -129,18 +186,15 @@ def parse_args(argv):
                         default='.')
     parser.add_argument('-y', action='store_true',
                         help='Forces YES [Y] to all questions')
-    parser.add_argument('-v', action='store_true',
-                        help='verbosity level: WARNINGS')
-    parser.add_argument('-vv', action='store_true',
-                        help='verbosity level: INFO')
-    parser.add_argument('-vvv', action='store_true',
-                        help='verbosity level: DEBUG')
+    parser.add_argument('-v', dest='verbose', action='count', default=0,
+                        help='increase verbosity: -v warning, -vv info, -vvv debug')
     parser.add_argument('--version', action='store_true',
                         help='Print the version and exits')
-    res = parser.parse_args(argv[1:])
-
-    return res
+    args = parser.parse_args(argv)
+    if args.out is None and not (args.plugin_list or args.plugin_help or args.version):
+        parser.error('the following arguments are required: -o/--out')
+    return args
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    sys.exit(main())

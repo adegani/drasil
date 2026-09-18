@@ -2,6 +2,7 @@ import subprocess as subprocess
 
 
 class DrasilPlug():
+    """Render a compact Git commit log for the source repository."""
     hooks = ['gitlog']
     name = 'GIT_log'
     description = 'Print the current git log of the website repository'
@@ -10,36 +11,59 @@ class DrasilPlug():
     help_str += 'src website. If the website is not a git repo, it fails.'
 
     def pre(self, *argv):
+        """Perform no pre-build work.
+
+        Args:
+            *argv: Lifecycle arguments supplied by the plugin dispatcher.
+        """
         pass
 
     def run(self, *argv):
-        in_dir = argv[1].src_root
-        cmd = 'git log --pretty=oneline'
-        output = '[gitlog: ERROR, NOT A GIT REPO]'
-        entry_str = '<div class="git_log_entry">'
-        entry_str += '    <span class="git_hash">2{}</span>'
-        entry_str += '    <span class="git_commit_msg">{}</span>'
-        entry_str += '</div>'
+        """Return recent commits formatted as HTML, or an error placeholder.
+
+        Args:
+            *argv: Dispatcher arguments; the rendering context is at index one.
+
+        Returns:
+            HTML fragments for commits, or an error placeholder.
+        """
+        repository_dir = argv[1].src_root
+        command = 'git log --pretty=oneline'
+        log_html = '[gitlog: ERROR, NOT A GIT REPO]'
+        entry_template = '<div class="git_log_entry">'
+        entry_template += '    <span class="git_hash">2{}</span>'
+        entry_template += '    <span class="git_commit_msg">{}</span>'
+        entry_template += '</div>'
 
         try:
-            output = subprocess.check_output(cmd.split(), cwd=in_dir).decode()
-            decoded_txt = output.split('\n')
-            for n, line in enumerate(decoded_txt):
+            log_output = subprocess.check_output(command.split(), cwd=repository_dir).decode()
+            log_lines = log_output.split('\n')
+            for index, line in enumerate(log_lines):
                 if len(line.split()) > 0:
                     line = self._sanitize_html(line)
-                    # decoded_txt[n] = hash_str.format(line.split()[0]) + ' ' +\
-                    #                  msg_str.format(' '.join(line.split()[1:]))\
-                    #                  + '<br>\n'
-                    decoded_txt[n] = entry_str.format(line.split()[0], ' '.join(line.split()[1:]))
-            output = ''.join(decoded_txt)
-        except Exception as e:
-            print(e)
-        return output
+                    log_lines[index] = entry_template.format(line.split()[0], ' '.join(line.split()[1:]))
+            log_html = ''.join(log_lines)
+        except Exception as error:
+            print(error)
+        return log_html
 
     def post(self, *argv):
+        """Perform no post-build work.
+
+        Args:
+            *argv: Lifecycle arguments supplied by the plugin dispatcher.
+        """
         pass
 
     def _sanitize_html(self, string):
+        """Escape characters that could alter generated commit-log markup.
+
+        Args:
+            string: Commit-log text to insert into HTML.
+
+        Returns:
+            Sanitised text safe for the plugin's generated markup.
+        """
         spec_chars = {'\"': '&quot;',
                       '\'': '&#39;',
                     #   '<': '&lt;',
