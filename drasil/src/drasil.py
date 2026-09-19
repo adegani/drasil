@@ -69,6 +69,19 @@ def paths_overlap(first, second):
     return first == second or first in second.parents or second in first.parents
 
 
+def clean_output(output_dir):
+    """Remove generated output, retaining regular ``thumb_*`` files and parents."""
+    for entry in output_dir.iterdir():
+        if entry.is_symlink():
+            entry.unlink()
+        elif entry.is_dir():
+            clean_output(entry)
+            if not any(entry.iterdir()):
+                entry.rmdir()
+        elif not (entry.is_file() and entry.name.startswith('thumb_')):
+            entry.unlink()
+
+
 def main(argv=None):
     """Run the static-site build command and return its process exit code.
 
@@ -121,11 +134,11 @@ def main(argv=None):
             logging.error(err_str)
             return 1
         if not args.y:
-            response = input(f'The path {output_dir} already exists. Clean and overwrite? [Y/n] ')
+            response = input(f'The path {output_dir} already exists. Clean and overwrite (keeping thumbnails)? [Y/n] ')
             if response.strip().lower() not in ('', 'y', 'yes'):
                 return 0
-        logging.warning('Cleaning output folder before build: %s', output_dir)
-        shutil.rmtree(output_dir)
+        logging.warning('Cleaning output folder before build (keeping thumbnails): %s', output_dir)
+        clean_output(output_dir)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
