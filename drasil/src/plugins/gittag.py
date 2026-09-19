@@ -31,7 +31,7 @@ class DrasilPlug():
         command = 'git describe --tags'
         tag_output = '[gittag: ERROR, NOT A GIT REPO]'
         try:
-            tag_output = subprocess.check_output(command.split(), cwd=repository_dir).decode()
+            tag_output = subprocess.check_output(command.split(), cwd=repository_dir).decode().split('-')[0]
         except:
             pass
         return tag_output
