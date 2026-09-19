@@ -47,16 +47,22 @@ class DrasilPlug():
         thumb_link = path.join(img_path, thumb_name)
         thumb_folder = path.split(thumb_path)[0]
         og_image_path = path.join(source_dir, img_link)
-        image = Image.open(og_image_path)
-        width_percent = (img_fixed_width / float(image.size[0]))
-        height_size = int((float(image.size[1]) * float(width_percent)))
-        specs_string = f'{image.width}x{image.height} {os.path.getsize(og_image_path)/1000:.1f} kB'
-        if not path.isdir(thumb_folder):
-            os.makedirs(thumb_folder)
-        if not path.exists(thumb_path):
-            if path.exists(og_image_path):
-                image = image.resize((img_fixed_width, height_size), PIL.Image.BICUBIC)
-                image.save(thumb_path, quality=90)
+        with Image.open(og_image_path) as image:
+            width_percent = (img_fixed_width / float(image.size[0]))
+            height_size = int((float(image.size[1]) * float(width_percent)))
+            specs_string = f'{image.width}x{image.height} {os.path.getsize(og_image_path)/1000:.1f} kB'
+            os.makedirs(thumb_folder, exist_ok=True)
+            thumb_size = (img_fixed_width, height_size)
+            reuse_thumbnail = False
+            if path.isfile(thumb_path) and os.stat(thumb_path).st_mtime_ns >= os.stat(og_image_path).st_mtime_ns:
+                try:
+                    with Image.open(thumb_path) as thumbnail:
+                        reuse_thumbnail = thumbnail.size == thumb_size
+                except OSError:
+                    pass
+            if not reuse_thumbnail:
+                with image.resize(thumb_size, PIL.Image.BICUBIC) as thumbnail:
+                    thumbnail.save(thumb_path, quality=90)
         img_tuple = (img_link, img_name, thumb_link, img_caption, specs_string)
         out_str = '<div class="picture">'
         out_str += '    <a href="%s" alt="%s"><img src="%s">%s <span class="picture_specs">%s</span></a>' % img_tuple
